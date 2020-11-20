@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Pipeline" type="Application" factoryName="Application">
+    <option name="INCLUDE_PROVIDED_SCOPE" value="true" />
+    <option name="MAIN_CLASS_NAME" value="com.company.Pipeline" />
+    <module name="AndroEvolve" />
+    <option name="PROGRAM_PARAMETERS" value="&quot;android.os.FileUtils#copyFile(java.io.File,java.io.File)#void&quot; &quot;android.os.FileUtils#copy(java.io.File,java.io.File)#int&quot;" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+      <option name="BuildArtifacts" enabled="true">
+        <artifact name="AndroEvolve" />
+      </option>
+    </method>
+  </configuration>
+</component>
