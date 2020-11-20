@@ -114,10 +114,6 @@ public class SymbolPreprocess {
             super.visit(methodCall, collector);
             // API Name Check
             if (methodCall.getName().toString().equals(functionName)) {
-                // This is for static check
-//                System.out.println(methodCall.toString());
-//                System.out.println(methodCall.resolve().isStatic());
-
                 NodeList<Expression> arguments = methodCall.getArguments();
                 // Flag to decide whether it is an old api call or new api call:
                 // 0 = not decided yet

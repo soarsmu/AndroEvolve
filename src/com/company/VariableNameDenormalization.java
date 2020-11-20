@@ -37,13 +37,10 @@ public class VariableNameDenormalization {
                     listToDelete.add(resolvedValue.getWrappedNode().findAncestor(Statement.class).get());
                     try {
                         Expression newExp = resolvedValue.getWrappedNode().findFirst(Expression.class).get();
-                        System.out.println("New Expression: " + newExp);
                         return recurse(newExp);
                     } catch (Exception E2){
-                        System.out.println("No expression found in the resolved value");
                         VariableDeclarator variableDeclarator = resolvedValue.getWrappedNode().findFirst(VariableDeclarator.class).get();
                         Expression newExp = variableDeclarator.getInitializer().get();
-                        System.out.println("New Expression: " + newExp);
                         return newExp;
                     }
 
@@ -75,17 +72,12 @@ public class VariableNameDenormalization {
                 if (n.getScope().isPresent() && n.getScope().get().toString().contains("classNameVariable")) {
                     NodeList<Expression> listArguments = n.getArguments();
                     // Loop through all the arguments
-
-                    System.out.println("List old arguments: " + listArguments);
                     for (int i = 0; i < listArguments.size(); i++) {
                         Expression currentArgument = listArguments.get(i);
                         Expression newArgument = recurse(currentArgument);
-                        System.out.println("Current argument: " + currentArgument);
-                        System.out.println("New argument: " + newArgument);
                         listArguments.set(i, newArgument);
                     }
                     n.setArguments(listArguments);
-                    System.out.println("List new arguments: " + listArguments);
                 }
 
             }
@@ -103,8 +95,6 @@ public class VariableNameDenormalization {
                 // Make sure that it has scope
                 if (n.getScope().isPresent() && n.getScope().get().toString().contains("classNameVariable")) {
                     Expression classNameVariable = n.getScope().get();
-                    System.out.println("Ini isi n: " + n);
-                    System.out.println("ClassNameVariable: " + classNameVariable);
                     JavaParserSymbolDeclaration resolvedValue = (JavaParserSymbolDeclaration) classNameVariable.asNameExpr().resolve();
                     Node toDelete = resolvedValue.getWrappedNode();
                     VariableDeclarator assignmentExpr = toDelete.findFirst(VariableDeclarator.class).get();
@@ -125,9 +115,7 @@ public class VariableNameDenormalization {
             VariableDeclarator variableDeclarator = n.getVariable(0);
             String variableType = variableDeclarator.getType().asString();
             if (variableDeclarator.getName().toString().contains("tempFunctionReturnValue")) {
-                System.out.println("TEMPFUNCTIONRETURN");
                 if (variableDeclarator.findAncestor(BlockStmt.class).isPresent()) {
-                    System.out.println("Masuk is present tempfunction");
                     BlockStmt blockStmt = variableDeclarator.findAncestor(BlockStmt.class).get();
                     NodeList<Statement> listStmt = blockStmt.getStatements();
                     boolean isFirstOccurence = true;
@@ -139,8 +127,6 @@ public class VariableNameDenormalization {
                                 isFirstOccurence = false;
                             } else {
                                 Statement toDelete = varDec.findAncestor(Statement.class).get();
-                                System.out.println("Statement to be deleted: " + toDelete);
-                                System.out.println(toDelete.remove());
                             }
                         }
                     }
@@ -197,11 +183,7 @@ public class VariableNameDenormalization {
         // Delete the classNameVariables initializer since they are no longer needed
         for (int i = 0; i < listToDelete.size(); i++) {
             Node toDelete = listToDelete.get(i);
-            try {
-                System.out.println("Is the classnamevariable deleted: " +  toDelete.remove());
-            } catch (Exception E) {
-                System.out.println("Classname might be already deleted before");
-            }
+
         }
         listToDelete = new ArrayList<>();
 

@@ -51,7 +51,6 @@ public class ReadabilityScorer {
         public Visitable visit(IfStmt n, List<String> arg) {
             super.visit(n, arg);
             boolean isValid = checkValidIfStatement(n);
-            System.out.println("Is the if statement valid??? : " + isValid);
             // is a valid if statement that contains the updated API
             if (isValid) {
                 List<Statement> listCopiedStatement = new ArrayList<>();
@@ -59,7 +58,6 @@ public class ReadabilityScorer {
                 if (n.findAncestor(BlockStmt.class).isPresent()) {
                     BlockStmt block = n.findAncestor(BlockStmt.class).get();
                     NodeList<Statement> listStmt = block.getStatements();
-                    System.out.println("Index of ifStatement: " + listStmt.indexOf(n));
                     listCopiedStatement.add(0, n);
                     int lastIndex = listStmt.indexOf(n);
                     if (lastIndex < 0) {
@@ -95,13 +93,6 @@ public class ReadabilityScorer {
                     currentApiNumber += 1;
                     // Setup the save path
                     String savePath = folderPath;
-//                    if (isNormalized) {
-//                        savePath = "norm_" + folderPath;
-//                    } else {
-//                        savePath = folderPath;
-//                    }
-                    System.out.println("FILENAME: " + fileName);
-                    System.out.println("FOLDER PATH: " + folderPath);
                     // Writing the files
                     try {
                         FileWriter fw = new FileWriter(folderPath + fileName);
@@ -120,14 +111,6 @@ public class ReadabilityScorer {
                         pw.close();
                         fw.close();
                     } catch (Exception E) {
-                        System.out.println();
-                        System.out.println();
-                        System.out.println();
-                        System.out.println("WARNING EXCEPTION!!!!!!");
-                        System.out.println(E);
-                        System.out.println();
-                        System.out.println();
-                        System.out.println();
                     }
                 }
             }

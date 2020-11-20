@@ -1,7 +1,6 @@
 package com.company;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.*;
@@ -12,13 +11,11 @@ import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.visitor.ModifierVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserMethodDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserParameterDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
-import javassist.expr.Expr;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -69,7 +66,6 @@ public class Pipeline {
                     processAsStatement = false;
                 }
                 if (processAsStatement) {
-                    System.out.println("Must process as statement");
                     methodCall.findAncestor(Statement.class).ifPresent(statement -> {
                         try {
                             Pattern p2 = Pattern.compile(apiName);
@@ -128,6 +124,8 @@ public class Pipeline {
                                     Thread.sleep(200);
                                     Runtime.getRuntime().exec(spatchCommand.toString());
                                     Thread.sleep(200);
+                                    File temp = new File(statementCocci);
+                                    temp.delete();
                                 } catch (InterruptedException | IOException e) {
                                     e.printStackTrace();
                                 }
@@ -137,6 +135,8 @@ public class Pipeline {
                             try {
                                 Runtime.getRuntime().exec(spatchCommand.toString());
                                 Thread.sleep(200);
+                                File temp = new File(variableCocci);
+                                temp.delete();
                             } catch (IOException | InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -289,6 +289,8 @@ public class Pipeline {
                                     Thread.sleep(200);
                                     Runtime.getRuntime().exec(spatchCommand.toString());
                                     Thread.sleep(200);
+                                    File temp = new File(statementCocci);
+                                    temp.delete();
                                 } catch (InterruptedException | IOException e) {
                                     e.printStackTrace();
                                 }
@@ -298,6 +300,8 @@ public class Pipeline {
                             try {
                                 Runtime.getRuntime().exec(spatchCommand.toString());
                                 Thread.sleep(200);
+                                File temp = new File(variableCocci);
+                                temp.delete();
                             } catch (IOException | InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -310,7 +314,6 @@ public class Pipeline {
                             while (s.hasNextLine()) {
                                 listNewStmt.add(s.nextLine());
                             }
-//                        System.out.println(listNewStmt);
                             s.close();
 
                             try {
@@ -403,7 +406,7 @@ public class Pipeline {
     }
 
 
-    private static class ParseResult {
+    public static class ParseResult {
         public String ifCondition;
         public String lowerApiBlock;
         public String upperApiBlock;
@@ -439,7 +442,7 @@ public class Pipeline {
         }
     }
 
-    private static String modifyFile(String filepath) {
+    public static String modifyFile(String filepath) {
         List<String> content = null;
         try {
             content = Files.readAllLines(Paths.get(filepath), StandardCharsets.UTF_8);
@@ -605,7 +608,6 @@ public class Pipeline {
         }
 
         private Expression recursiveNode(Expression toRecurse) {
-            System.out.println("The object that is recursed: " + toRecurse);
             if (toRecurse.isThisExpr()) {
                 // Case of this
                 // Need to check whether in the target this also correct
@@ -680,8 +682,6 @@ public class Pipeline {
                         if (initializer != null) {
                             returnValue[0] = initializer;
                         } else {
-                            System.out.println("NO RELEVANT SUBSTITUTE FOUND");
-                            System.out.println("NEED TO MANUALLY FILL THE PARAMETER FOR:");
                             returnValue[0] = null;
                         }
                     });
@@ -774,7 +774,6 @@ public class Pipeline {
                     return returnValue[0];
                 } catch (Exception E) {
                     // if exception, meaning the object is static and out of the file
-                    System.out.println("OBJECT IS OUT OF THE FILE SCOPE");
                     return toRecurse;
                 }
             } else if (toRecurse.isNameExpr()) {
@@ -782,7 +781,6 @@ public class Pipeline {
                 // Recursively process the name expressions
 
                 // Check if it is a locally declared variable
-                System.out.println("toRecurse is name expression: " + toRecurse);
                 if ((!variableName.isEmpty()) && (variableName.get(variableName.size() - 1).contains(toRecurse.asNameExpr().getName().toString()))) {
                     return toRecurse;
                 }
@@ -790,23 +788,17 @@ public class Pipeline {
                     // Recurse the resolved value
                     JavaParserSymbolDeclaration nameDeclaration = (JavaParserSymbolDeclaration) toRecurse.asNameExpr().resolve();
                     Node wrappedNode = nameDeclaration.getWrappedNode();
-                    System.out.println("Before returning from the try");
-                    System.out.println("This is wrapped node: " + wrappedNode);
-                    System.out.println("The first found expression: ");
                     // this try catch is created due to the weird bug that its not always able
                     // to find the first expression, even though it exist
                     try {
                         Expression exp = wrappedNode.findFirst(Expression.class).get();
-                        System.out.println("Expression here: " + exp);
                         if ((exp.toString().trim().charAt(0) == '{') && flagArgument) {
                             return toRecurse;
                         }
                         return recursiveNode(wrappedNode.findFirst(Expression.class).get());
                     } catch (Exception E5) {
                         if (wrappedNode.toString().contains("=")) {
-                            System.out.println("Return the expression using the weird parseExpression");
                             String expStr = wrappedNode.toString().substring(wrappedNode.toString().indexOf("=") + 1);
-                            System.out.println("expStr: " + wrappedNode.toString());
                             if ((expStr.trim().charAt(0) == '{') && flagArgument) {
                                 return toRecurse;
                             }
@@ -818,7 +810,6 @@ public class Pipeline {
                     // If exception happened probably:
                     // Field Declaration or Parameter Declaration
                     // Check if parameter declaration
-                    System.out.println("Exception in the try: " + E.toString());
                     try {
                         // If parameter declaration, we can do nothing about it, just return null
                         JavaParserParameterDeclaration parameterDeclaration = (JavaParserParameterDeclaration) toRecurse.asNameExpr().resolve();
@@ -904,8 +895,6 @@ public class Pipeline {
                                 if (initializer != null) {
                                     returnValue[0] = initializer;
                                 } else {
-                                    System.out.println("NO RELEVANT SUBSTITUTE FOUND");
-                                    System.out.println("NEED TO MANUALLY FILL THE PARAMETER FOR:");
                                     returnValue[0] = finalToRecurse;
                                 }
                             });
@@ -940,19 +929,15 @@ public class Pipeline {
                 // Then, resolve the arguments
                 flagArgument = true;
                 NodeList<Expression> arguments = expression.getArguments();
-                System.out.println("Old method arguments: " + arguments);
                 for (int i = 0; i < arguments.size(); i++) {
                     Expression newArgument = recursiveNode(arguments.get(i));
                     // if it is a name expression, we might need to copy it
                     if (newArgument.isNameExpr()) {
-                        System.out.println("This is newArgument: " + newArgument);
                         flagArgument = false;
-                        System.out.println(newArgument.asNameExpr().resolve());
                         JavaParserSymbolDeclaration valueDeclaration = (JavaParserSymbolDeclaration) newArgument.asNameExpr().resolve();
 
                         ResolvedType type = newArgument.calculateResolvedType();
                         String statement = type.describe() + " " + valueDeclaration.getWrappedNode() + ";";
-                        System.out.println("String: " +statement);
                         Statement stmt = StaticJavaParser.parseStatement(statement);
                         // add to the code block
 
@@ -970,15 +955,12 @@ public class Pipeline {
                             blockStmt.addStatement(0, stmt);
                         }
 
-                        System.out.println("This is the block:");
-                        System.out.println(blockStmt);
                         flagArgument = true;
                     }
 
                     arguments.set(i, newArgument);
                 }
                 flagArgument = false;
-                System.out.println("New method arguments: " + arguments);
                 expression.setArguments(arguments);
 
 
@@ -1008,19 +990,13 @@ public class Pipeline {
                                 }
                             }
                         } catch (Exception E) {
-                            System.out.println("METHOD DECLARATION HAVE NO BODY");
                         }
                         variableName.remove(variableName.size() - 1);
                         methodDeclare = methodDeclaration;
                     } else {
-                        System.out.println("Method already exist in the array");
                         return expression;
                     }
                 } catch (Exception E) {
-                    // For better check if the method is an Android API, should add the android jar into the resolver
-                    // Maybe can make separate resolver
-                    System.out.println("CANNOT RESOLVE THE METHOD");
-                    System.out.println("PROBABLY OUT OF THE FILE SCOPE OR A STATIC METHOD");
                     isOutOfScope = true;
                     return expression;
                 }
@@ -1238,18 +1214,15 @@ public class Pipeline {
                 // Time to crawl for the related code
                 for (int i = 0; i < listElseBlock.size() - 1; i++) {
                     Statement currStmt = listElseBlock.get(i);
-                    System.out.println("I: " + i);
 
                     boolean finalIsSameClassName1 = isSameClassName;
                     currStmt.findFirst(VariableDeclarator.class).ifPresent(variableDeclarator -> {
                         if (variableDeclarator.getName().asString().contains("classNameVariable") && finalIsSameClassName1) {
-                            System.out.println("Class name is the same");
+
                         } else {
                             Expression toRecurse = variableDeclarator.getInitializer().get();
-                            System.out.println(toRecurse);
                             variableName = new ArrayList<>();
                             Expression result = recursiveNode(toRecurse);
-                            System.out.println("This is the value of result: " + result);
                             if (result == null) {
                                 variableDeclarator.setInitializer("null");
                             } else {
@@ -1290,17 +1263,13 @@ public class Pipeline {
                 // DELETE FOR NON DATA FLOW VERSION
                 for (int i = 0; i < listIfBlock.size() - 1; i++) {
                     Statement currStmt = listIfBlock.get(i);
-                    System.out.println("I: " + i);
                     boolean finalIsSameClassName = isSameClassName;
                     currStmt.findFirst(VariableDeclarator.class).ifPresent(variableDeclarator -> {
                         if (variableDeclarator.getName().asString().contains("classNameVariable") && finalIsSameClassName) {
-                            System.out.println("Same class name");
                         } else {
                             Expression toRecurse = variableDeclarator.getInitializer().get();
-                            System.out.println(toRecurse);
                             variableName = new ArrayList<>();
                             Expression result = recursiveNode(toRecurse);
-                            System.out.println("This is the value of result: " + result);
                             if (result == null) {
                                 variableDeclarator.setInitializer("null");
                             } else {
@@ -1327,63 +1296,7 @@ public class Pipeline {
                     ifMethodName.add(ifMethod.get(i).getNameAsString());
                 }
 
-                System.out.println("Before the second deletion");
-                System.out.println(ifstmt);
-
-//                // Process to delete uninmportant and unrelated stuff first
-//                // Declare important and related code
-//                matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld)) ;
-//                // Delete unrelated statements
-//                for (int i = listIfBlock.size() - 1; i >= 0; i--) {
-//                    boolean contain = false;
-//                    for (String s : matches) {
-//                        // Case does not contain the important stuff, delete
-//                        if (listIfBlock.get(i).toString().contains(s)) {
-//                            contain = true;
-//                            break;
-//                        }
-//                    }
-//                    if (contain) {
-//                        try {
-//                            VariableDeclarator temp = listIfBlock.get(i).findFirst(VariableDeclarator.class).get();
-//                            matches.add(temp.getInitializer().get().toString().trim());
-//                        } catch (Exception E10) {
-//
-//                        }
-//                    }
-//                    if (!contain) {
-//                        ifBlock.remove(listIfBlock.get(i));
-//                    }
-//                }
-//
-//                matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld)) ;
-//                for (int i = listElseBlock.size() - 1; i >= 0; i--) {
-//                    boolean contain = false;
-//                    for (String s : matches) {
-//                        // Case does not contain the important stuff, delete
-//                        if (listElseBlock.get(i).toString().contains(s)) {
-//                            contain = true;
-//                            break;
-//                        }
-//                    }
-//                    if (contain) {
-//                        try {
-//                            VariableDeclarator temp = listElseBlock.get(i).findFirst(VariableDeclarator.class).get();
-//                            matches.add(temp.getInitializer().get().toString().trim());
-//                        } catch (Exception E10) {
-//
-//                        }
-//                    }
-//                    if (!contain) {
-//                        elseBlock.remove(listElseBlock.get(i));
-//                    }
-//                }
-
-
-                // Process to delete uninmportant and unrelated stuff first
-                // Declare important and related code
                 matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld)) ;
-                // Delete unrelated statements
 
                 for (int i = listIfBlock.size() - 2; i >= 0; i--) {
                     boolean contain = false;
@@ -1473,8 +1386,6 @@ public class Pipeline {
                     }
                 }
 
-                System.out.println("This is before the result");
-                System.out.println(ifstmt);
 
 
                 // Check the API name here
@@ -1518,7 +1429,7 @@ public class Pipeline {
         }
     }
 
-    private static List<ParseResult> getMatchingIf(String apiNameOld, String apiNameNew, String filepath) throws FileNotFoundException {
+    public static List<ParseResult> getMatchingIf(String apiNameOld, String apiNameNew, String filepath) throws FileNotFoundException {
 //        String tempFilePath = modifyFile(filepath);
         File file = new File(filepath);
         CompilationUnit cu = StaticJavaParser.parse(file);
@@ -1527,35 +1438,18 @@ public class Pipeline {
         try {
             methodNameCollector.visit(cu, ifBlocks);
         } catch (Exception E) {
-            System.out.println("Somehow during the visit, there is an exception???");
-            System.out.println(E);
-            System.out.println("Like how it is possible?");
             E.printStackTrace();
         }
-
-
-
         return MethodNameCollector.parsingResult;
     }
-
-
-
-
-    private static ArrayList<String> listFile;
-    private static StringBuilder outputToFile;
-
-
-
 
     private static boolean validateInput(String[] args) {
         String oldAPI = args[0];
         String newAPI = args[1];
         if (!validateAPI(oldAPI, 0)) {
-            System.out.println("A mistake is detected in Old API");
             return false;
         }
         if (!validateAPI(newAPI, 1)) {
-            System.out.println("A mistake is detected in New API");
             return false;
         }
         return true;
@@ -1563,7 +1457,6 @@ public class Pipeline {
 
     private static String createVariablePullCocci(String fullyQualifiedName) {
         if (!validateAPI(fullyQualifiedName, -1)) {
-            System.out.println("A mistake is detected in Old API");
             return "";
         }
         int numParam = getNumParameter(fullyQualifiedName);
@@ -1588,7 +1481,6 @@ public class Pipeline {
             writer.println("- " + apiName + "(" + parameterString + ");");
             StringBuilder newParamString = new StringBuilder("");
             for (int i = 0; i < numParam; i++) {
-//                newParamString.append("parameterVariable" + apiName + i);
                 newParamString.append("parameterVariable" + i);
                 if (i != numParam - 1) {
                     newParamString.append(", ");
@@ -1597,9 +1489,6 @@ public class Pipeline {
             writer.println("+ " + apiName + "(" + newParamString.toString() + ");");
             writer.println("...>");
             writer.println();
-
-
-
 
             // with Class
             writer.println("@variable_pullClass@");
@@ -1615,14 +1504,11 @@ public class Pipeline {
             for (int i = 0; i < numParam; i++) {
                 String parameterType = getParameterType(fullyQualifiedName, i);
                 writer.println("+ " + parameterType + " parameterVariable" + i + " = param" + i + ";");
-//                writer.println("+ " + parameterType + " parameterVariable" + apiName + i + " = param" + i + ";");
             }
             String classType = getFunctionClassNameType(fullyQualifiedName);
-//            writer.println("+ " + classType + " classNameVariable" + apiName + " = classname1;");
             writer.println("+ " + classType + " classNameVariable" + " = classname1;");
             writer.println("- classname1." + apiName + "(" + parameterString + ");");
             writer.println("+ classNameVariable" +"." + apiName + "(" + newParamString.toString() + ");");
-//            writer.println("+ classNameVariable"+ apiName +"." + apiName + "(" + newParamString.toString() + ");");
             writer.println("...>");
             writer.println();
 
@@ -1640,16 +1526,11 @@ public class Pipeline {
             for (int i = 0; i < numParam; i++) {
                 String parameterType = getParameterType(fullyQualifiedName, i);
                 writer.println("+ " + parameterType + " parameterVariable" + i + " = param" + i + ";");
-//                writer.println("+ " + parameterType + " parameterVariable" + apiName + i + " = param" + i + ";");
             }
             writer.println("- iden1 = " + apiName + "(" + parameterString + ");");
             writer.println("+ iden1 = " + apiName + "(" + newParamString.toString() + ");");
             writer.println("...>");
             writer.println();
-
-
-
-
             // Assignment with Class
             writer.println("@variable_pullClass_assignment@");
             if (numParam > 0) {
@@ -1664,13 +1545,10 @@ public class Pipeline {
             writer.println("<... when exists");
             for (int i = 0; i < numParam; i++) {
                 String parameterType = getParameterType(fullyQualifiedName, i);
-//                writer.println("+ " + parameterType + " parameterVariable"  + apiName+ i + " = param" + i + ";");
                 writer.println("+ " + parameterType + " parameterVariable" + i + " = param" + i + ";");
             }
-//            writer.println("+ " + classType + " classNameVariable" + apiName +" = classname1;");
             writer.println("+ " + classType + " classNameVariable" + " = classname1;");
             writer.println("- iden1 = classname1." + apiName + "(" + parameterString + ");");
-//            writer.println("+ iden1 = classNameVariable" + apiName + "." + apiName + "(" + newParamString.toString() + ");");
             writer.println("+ iden1 = classNameVariable" + "." + apiName + "(" + newParamString.toString() + ");");
             writer.println("...>");
             writer.println();
@@ -1680,11 +1558,6 @@ public class Pipeline {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-
-
-
-
-
         return fileName;
     }
 
@@ -1718,7 +1591,6 @@ public class Pipeline {
         // Need to incorporate return value later
         String returnValue = getReturnValue(fullyQualifiedName);
         if (!validateAPI(fullyQualifiedName, -1)) {
-            System.out.println("A mistake is detected in Old API");
             return "";
         }
         int numParam = getNumParameter(fullyQualifiedName);
@@ -1753,9 +1625,7 @@ public class Pipeline {
                 writer.println(temp);
             }
             writer.println("@@");
-//            writer.println("+ " + returnValue + " tempFunctionReturnValue" + apiName + ";");
             writer.println("+ " + returnValue + " tempFunctionReturnValue" + ";");
-//            writer.println("+ tempFunctionReturnValue" + apiName +" = " + apiName + "(" + parameterString + ");");
             writer.println("+ tempFunctionReturnValue" + " = " + apiName + "(" + parameterString + ");");
             writer.println("S");
             writer.println();
@@ -1775,9 +1645,7 @@ public class Pipeline {
             }
             writer.println("@@");
             writer.println("- "+ apiName + "(" + parameterString + ")@S");
-//            writer.println("+ tempFunctionReturnValue" + apiName);
             writer.println("+ tempFunctionReturnValue");
-
             // Cocci script for cases with classname
             writer.println();
             writer.println("@pullClass@");
@@ -1806,9 +1674,7 @@ public class Pipeline {
             }
             writer.println("expression pullClass.classname1;");
             writer.println("@@");
-//            writer.println("+ " + returnValue + " tempFunctionReturnValue" + apiName + ";");
             writer.println("+ " + returnValue + " tempFunctionReturnValue" + ";");
-//            writer.println("+ tempFunctionReturnValue" + apiName + " = classname1." + apiName + "(" + parameterString + ");");
             writer.println("+ tempFunctionReturnValue" + " = classname1." + apiName + "(" + parameterString + ");");
             writer.println("S");
             writer.println();
@@ -1830,8 +1696,6 @@ public class Pipeline {
             writer.println("@@");
             writer.println("- classname1."+ apiName + "(" + parameterString + ")@S");
             writer.println("+ tempFunctionReturnValue");
-//            writer.println("+ tempFunctionReturnValue"  + apiName);
-
             writer.println();
             writer.println();
             writer.println("@@");
@@ -1868,6 +1732,8 @@ public class Pipeline {
         try {
             Runtime.getRuntime().exec(spatchCommand.toString());
             Thread.sleep(1200);
+            File delete = new File(importCocci);
+            delete.delete();
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -1880,188 +1746,7 @@ public class Pipeline {
         }
     }
 
-    /*
-    Pipeline steps:
-    1. Pull out statement if the input is a function with returned value:
-        a. Create the cocci first
-        b. Apply the cocci to the file
-    2. Pull out variable if have variables
-    3. Create the update statement
-     */
-    public static void normalizeFileCocci(String fullyQualifiedName, String filepath) {
-        File file = new File(filepath);
-        if (!file.exists()) {
-            System.out.println("FILE DOES NOT EXISTS!!!");
-            return;
-        }
-        String returnValue = getReturnValue(fullyQualifiedName);
-        int numParam = getNumParameter(fullyQualifiedName);
-
-        ArrayList<String> allCommand = new ArrayList<>();
-        Runtime runtime = Runtime.getRuntime();
-        if (!returnValue.equals("void")) {
-            // In case return value is not void, pull out the statement
-            String statementCocci = createStatementPullCocci(fullyQualifiedName);
-            StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + statementCocci + " " + filepath + " --in-place");
-
-            try {
-                Thread.sleep(500);
-                Runtime.getRuntime().exec(spatchCommand.toString());
-                Thread.sleep(1200);
-            } catch (InterruptedException | IOException e) {
-                e.printStackTrace();
-            }
-        }
-        String variableCocci = createVariablePullCocci(fullyQualifiedName);
-        StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + variableCocci + " " + filepath + " --in-place");
-        allCommand.add(spatchCommand.toString());
-        try {
-            Runtime.getRuntime().exec(spatchCommand.toString());
-            Thread.sleep(1200);
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        String importCocci = createImportCocci(fullyQualifiedName);
-        spatchCommand = new StringBuilder("spatch --sp-file " + importCocci + " " + filepath + " --in-place");
-
-        try {
-            Runtime.getRuntime().exec(spatchCommand.toString());
-            Thread.sleep(1200);
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static String createDetectAPICocci(String fullyQualifiedNameOld, String fullyQualifiedNameNew) {
-        int numParamOld = getNumParameter(fullyQualifiedNameOld);
-        int numParamNew = getNumParameter(fullyQualifiedNameNew);
-        String paramStringOld = getParamCocciString(0, numParamOld);
-        String paramStringNew = getParamCocciString(numParamOld, numParamOld + numParamNew);
-        String paramStringAll = paramStringOld + ", " + paramStringNew;
-        String apiNameOld = getFunctionName(fullyQualifiedNameOld);
-        String apiNameNew = getFunctionName(fullyQualifiedNameNew);
-        String classNameOld = getFunctionClassNameType(fullyQualifiedNameOld);
-        String classNameNew = getFunctionClassNameType(fullyQualifiedNameNew);
-
-        String fileName = "apiDetect-" + apiNameOld + apiNameNew + ".cocci";
-        // Start making the file
-        try {
-            PrintWriter writer = new PrintWriter(fileName, "UTF-8");
-            writer.println("@Old_New_NoClass@");
-            writer.println("expression " + paramStringAll + ";");
-            writer.println("expression ifstatement;");
-            writer.println("@@");
-            writer.println("+ // ifstatement_begin");
-            writer.println("if (ifstatement) {");
-            writer.println("+ // ifstatement_end");
-            writer.println("+ // oldapi_begin");
-            writer.println("<+...");
-            writer.println(apiNameOld + "(" + paramStringOld + ");");
-            writer.println("...+>");
-            writer.println("+ // oldapi_end");
-            writer.println("} else {");
-            writer.println("+ // newapi_begin");
-            writer.println("<+...");
-            writer.println(apiNameNew + "(" + paramStringNew + ");");
-            writer.println("...+>");
-            writer.println("+ // newapi_end");
-            writer.println("}");
-            writer.println("+ // ENDING");
-            writer.println("+ continue;");
-            writer.println();
-
-
-            writer.println("@Old_New_Class@");
-            writer.println("expression " + paramStringAll + ";");
-            writer.println("expression ifstatement;");
-            writer.println("expression classValueOld, classValueNew;");
-            writer.println("identifier classOld, classNew;");
-            writer.println("@@");
-            writer.println("+ // ifstatement_begin");
-            writer.println("if (ifstatement) {");
-            writer.println("+ // ifstatement_end");
-            writer.println("+ // oldapi_begin");
-            writer.println("<+...");
-            writer.println(classNameOld + " classOld = classValueOld;");
-            writer.println("classOld." + apiNameOld + "(" + paramStringOld + ");");
-            writer.println("...+>");
-            writer.println("+ // oldapi_end");
-            writer.println("} else {");
-            writer.println("+ // newapi_begin");
-            writer.println("<+...");
-            writer.println(classNameNew + " classNew = classValueNew;");
-            writer.println("classNew." + apiNameNew + "(" + paramStringNew + ");");
-            writer.println("...+>");
-            writer.println("+ // newapi_end");
-            writer.println("}");
-            writer.println("+ // ENDING");
-            writer.println("+ continue;");
-            writer.println();
-
-            writer.println("@New_Old_NoClass@");
-            writer.println("expression " + paramStringAll + ";");
-            writer.println("expression ifstatement;");
-            writer.println("@@");
-            writer.println("+ // ifstatement_begin");
-            writer.println("if (ifstatement) {");
-            writer.println("+ // ifstatement_end");
-            writer.println("+ // newapi_begin");
-            writer.println("<+...");
-            writer.println(apiNameNew + "(" + paramStringNew + ");");
-            writer.println("...+>");
-            writer.println("+ // newapi_end");
-            writer.println("} else {");
-            writer.println("+ // oldapi_begin");
-            writer.println("<+...");
-            writer.println(apiNameOld + "(" + paramStringOld + ");");
-            writer.println("...+>");
-            writer.println("+ // oldapi_end");
-            writer.println("}");
-            writer.println("+ // ENDING");
-            writer.println("+ continue;");
-            writer.println();
-
-
-            writer.println("@New_Old_Class@");
-            writer.println("expression " + paramStringAll + ";");
-            writer.println("expression ifstatement;");
-            writer.println("expression classValueOld, classValueNew;");
-            writer.println("identifier classOld, classNew;");
-            writer.println("@@");
-            writer.println("+ // ifstatement_begin");
-            writer.println("if (ifstatement) {");
-            writer.println("+ // ifstatement_end");
-            writer.println("+ // newapi_begin");
-            writer.println("<+...");
-
-            writer.println(classNameNew + " classNew = classValueNew;");
-            writer.println("classNew." + apiNameNew + "(" + paramStringNew + ");");
-            writer.println("...+>");
-            writer.println("+ // newapi_end");
-            writer.println("} else {");
-            writer.println("+ // oldapi_begin");
-            writer.println("<+...");
-            writer.println(classNameOld + " classOld = classValueOld;");
-            writer.println("classOld." + apiNameOld + "(" + paramStringOld + ");");
-            writer.println("...+>");
-            writer.println("+ // oldapi_end");
-            writer.println("}");
-            writer.println("+ // ENDING");
-            writer.println("+ continue;");
-            writer.println();
-
-            writer.close();
-
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        return fileName;
-    }
-
-    public static String createUpdateApiCocci(List<ParseResult> listIfs, String oldApiName, String newApiName, boolean haveReturn) {
+    public static String createUpdateApiCocci(List<ParseResult> listIfs, String oldApiName, String newApiName, boolean haveReturn, String outputPath) {
         if (listIfs.size() > 0) {
             String ifCondition = listIfs.get(0).ifCondition;
 
@@ -2091,52 +1776,36 @@ public class Pipeline {
             allLine = new ArrayList<>(listUpper);
             diffLine = new ArrayList<>();
 
-
-
-
             for (int i = 0; i < listLower.size(); i++) {
                 if (!listUpper.contains(listLower.get(i))) {
                     diffLine.add(listLower.get(i));
                 }
             }
 
-            // Seems like these are now unnecessary
-
-
-            // Delete the line that does not contain parameterVariable or classNameVariable or apiName from the sameLine
-            // Delete from behind
             String[] matches = new String[] {"parameterVariable", "classNameVariable", oldApiName, newApiName};
             boolean alwaysDelete = false;
             for (int i = 0; i < allLine.size(); i++) {
                 String temp = allLine.get(i);
                 boolean needDelete = true;
-
                 for (String s : matches)
                 {
                     if (allLine.get(i).contains(s)) {
                         needDelete = false;
-
                         break;
                     }
                 }
                 if ((allLine.get(i).contains(newApiName) || allLine.get(i).contains(oldApiName)) && !alwaysDelete) {
                     alwaysDelete = true;
-continue;
+                    continue;
                 }
                 if (alwaysDelete) {
                     allLine.remove(i);
                     i -= 1;
                 }
-//                else if (needDelete) {
-//                    allLine.remove(i);
-//                    i -= 1;
-//                }
             }
             alwaysDelete = false;
             for (int i = 0; i < diffLine.size(); i++) {
                 String temp = diffLine.get(i);
-                // IMPORTANT FLAG TO DETERMINE WHETHER TO DELETE THE "UNIMPORTANT" LINE
-                // FALSE IF WANT TO KEEP THE UNIMPORTANT LINE
                 boolean needDelete = false;
 
                 for (String s : matches)
@@ -2159,9 +1828,6 @@ continue;
                     i -= 1;
                 }
             }
-
-
-            // This is to fix the case of same variable but in different order
             for (int i = 0; i < diffLine.size(); i++) {
                 // Check if assignment
                 if (diffLine.get(i).contains("=")) {
@@ -2192,7 +1858,6 @@ continue;
             int expressionIterator = 0;
             int assignmentIterator = 0;
             boolean classNameAvailable = false;
-            // Need special processing for last line
             for (int i = 0; i < allLine.size() - 1; i++) {
                 String tempValue = allLine.get(i);
                 if (tempValue.contains("parameterVariable")) {
@@ -2206,7 +1871,6 @@ continue;
                 }
                 if (tempValue.contains("classNameVariable")) {
                     String replacementString = tempValue.replace("classNameVariable", "classIden");
-                    // Check if this is the line with api call
                     if (!(tempValue.contains(oldApiName) || tempValue.contains(newApiName))) {
                         String rightHandSideAssignment = tempValue.substring(tempValue.indexOf("=") + 1, tempValue.indexOf(";"));
                         replacementString = replacementString.replace(rightHandSideAssignment, (" exp" + assignmentIterator));
@@ -2236,13 +1900,10 @@ continue;
 
                 diffLine.set(i, replacementString);
             }
-
-
             // Writing the cocci file
             PrintWriter writer = null;
-            String filename = oldApiName + "-" + newApiName + ".cocci";
-
-
+            String filename = outputPath;
+//            String filename = oldApiName + "-" + newApiName + ".cocci";
             try {
                 writer = new PrintWriter(filename);
                 writer.println("@upperbottom_classname@");
@@ -2287,9 +1948,6 @@ continue;
                     writer.println(";");
                 }
                 writer.println("@@");
-//                for (int i = 0; i < allLine.size() - 1; i++) {
-//                    writer.println(allLine.get(i).trim());
-//                }
                 writer.println("...");
                 writer.println("+ if (" + ifCondition + ") {");
                 // NON ASSIGNMENT CASE
@@ -2298,11 +1956,7 @@ continue;
 
                 writer.println(apiLine);
                 writer.println("+ } else {");
-
                 ArrayList<String> appearInDiff = new ArrayList<>();
-
-                System.out.println("THIS IS DIFFLINE");
-                System.out.println(diffLine);
                 for (int i = 0; i < diffLine.size() - 1; i++) {
                     writer.write("+ ");
                     if (diffLine.get(i).contains("iden")) {
@@ -2340,20 +1994,13 @@ continue;
                         }
                     }
                 }
-
-
                 writer.print("+ ");
                 writer.println(otherLine.trim());
                 writer.write("+ }");
                 writer.println();
-//                writer.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
-
-
-
-
 
             // bottomupper version
             allLine = new ArrayList<>(listLower);
@@ -2378,22 +2025,16 @@ continue;
                 }
                 if ((allLine.get(i).contains(newApiName) || allLine.get(i).contains(oldApiName)) && !alwaysDelete) {
                     alwaysDelete = true;
-continue;
+                    continue;
                 }
                 if (alwaysDelete) {
                     allLine.remove(i);
                     i -= 1;
                 }
-//                else if (needDelete) {
-//                    allLine.remove(i);
-//                    i -= 1;
-//                }
             }
             alwaysDelete = false;
             for (int i = 0; i < diffLine.size(); i++) {
                 String temp = diffLine.get(i);
-                // IMPORTANT FLAG TO DETERMINE WHETHER TO DELETE THE "UNIMPORTANT" LINE
-                // FALSE IF WANT TO KEEP THE UNIMPORTANT LINE
                 boolean needDelete = false;
                 for (String s : matches)
                 {
@@ -2405,7 +2046,7 @@ continue;
                 }
                 if ((diffLine.get(i).contains(newApiName) || diffLine.get(i).contains(oldApiName)) && !alwaysDelete) {
                     alwaysDelete = true;
-continue;
+                    continue;
                 }
                 if (alwaysDelete) {
                     diffLine.remove(i);
@@ -2416,7 +2057,6 @@ continue;
                 }
             }
 
-            // This is to fix the case of same variable but in different order
             for (int i = 0; i < diffLine.size(); i++) {
                 // Check if assignment
                 if (diffLine.get(i).contains("=")) {
@@ -2444,8 +2084,6 @@ continue;
                     }
                 }
             }
-
-
             expressionIterator = 0;
             assignmentIterator = 0;
             classNameAvailable = false;
@@ -2544,16 +2182,11 @@ continue;
                 writer.println(";");
             }
             writer.println("@@");
-//            for (int i = 0; i < allLine.size() - 1; i++) {
-//                writer.println(allLine.get(i).trim());
-//            }
             writer.println("...");
             writer.println("+ if (" + ifCondition + ") {");
 
 
             ArrayList<String> appearInDiff = new ArrayList<>();
-            System.out.println("THIS IS DIFFLINE");
-            System.out.println(diffLine);
             for (int i = 0; i < diffLine.size() - 1; i++) {
                 writer.write("+ ");
                 if (diffLine.get(i).contains("iden")) {
@@ -2600,10 +2233,6 @@ continue;
             writer.println(apiLine);
             writer.write("+ }");
             writer.println();
-//            writer.close();
-
-
-            // WRITING THE ASSIGNMENT CASE
 
             if (haveReturn) {
                 writer.println();
@@ -2617,18 +2246,14 @@ continue;
                     }
                 }
 
-                // Delete the line that does not contain parameterVariable or classNameVariable or apiName from the sameLine
-                // Delete from behind
                 alwaysDelete = false;
                 for (int i = 0; i < allLine.size(); i++) {
                     String temp = allLine.get(i);
                     boolean needDelete = true;
-
                     for (String s : matches)
                     {
                         if (allLine.get(i).contains(s)) {
                             needDelete = false;
-
                             break;
                         }
                     }
@@ -2640,10 +2265,6 @@ continue;
                         allLine.remove(i);
                         i -= 1;
                     }
-//                    else if (needDelete) {
-//                        allLine.remove(i);
-//                        i -= 1;
-//                    }
                 }
                 alwaysDelete = false;
                 for (int i = 0; i < diffLine.size(); i++) {
@@ -2670,10 +2291,8 @@ continue;
                         i -= 1;
                     }
                 }
-
                 // This is to fix the case of same variable but in different order
                 for (int i = 0; i < diffLine.size(); i++) {
-                    // Check if assignment
                     if (diffLine.get(i).contains("=")) {
                         boolean rhsExist = false;
                         String diff = diffLine.get(i);
@@ -2681,7 +2300,6 @@ continue;
                         for (int j = 0; j < allLine.size(); j++) {
                             String allLhs = "";
                             if (allLine.get(j).contains(rhs)) {
-
                                 rhsExist = true;
                                 if (allLine.get(j).contains("parameter") && allLine.get(j).contains("=")) {
                                     allLhs = allLine.get(j).substring(allLine.get(j).indexOf("parameter"), allLine.get(j).indexOf("=")).trim();
@@ -2701,11 +2319,9 @@ continue;
                     }
                 }
 
-
                 expressionIterator = 0;
                 assignmentIterator = 0;
                 classNameAvailable = false;
-                // Need special processing for last line
                 for (int i = 0; i < allLine.size() - 1; i++) {
                     String tempValue = allLine.get(i);
                     if (tempValue.contains("parameterVariable")) {
@@ -2792,9 +2408,6 @@ continue;
                     writer.println(";");
                 }
                 writer.println("@@");
-//                for (int i = 0; i < allLine.size() - 1; i++) {
-//                    writer.println(allLine.get(i).trim());
-//                }
                 writer.println("...");
                 writer.println("+ if (" + ifCondition + ") {");
                 // ASSIGNMENT CASE
@@ -2805,11 +2418,7 @@ continue;
                 writer.println(apiLine);
                 writer.println("+ } else {");
 
-
-                // TRY IT HERE
                 appearInDiff = new ArrayList<>();
-                System.out.println("THIS IS DIFFLINE");
-                System.out.println(diffLine);
                 for (int i = 0; i < diffLine.size() - 1; i++) {
                     writer.write("+ ");
                     if (diffLine.get(i).contains("iden")) {
@@ -2849,11 +2458,6 @@ continue;
                     }
                 }
 
-//                for (int i = 0; i < diffLine.size() - 1; i++) {
-//                    writer.write("+ ");
-//                    writer.println(diffLine.get(i).trim());
-//                }
-//                otherLine = diffLine.get(diffLine.size() - 1);
                 writer.print("+ ");
                 if (otherLine.indexOf("=") == -1) {
                     writer.print("tempFunctionReturnValue = ");
@@ -2862,9 +2466,6 @@ continue;
                 writer.println(otherLine.trim());
                 writer.write("+ }");
                 writer.println();
-//                writer.close();
-
-
                 // bottomupper version
                 allLine = new ArrayList<>(listLower);
                 diffLine = new ArrayList<>();
@@ -2894,10 +2495,6 @@ continue;
                         allLine.remove(i);
                         i -= 1;
                     }
-//                    else if (needDelete) {
-//                        allLine.remove(i);
-//                        i -= 1;
-//                    }
                 }
                 alwaysDelete = false;
                 for (int i = 0; i < diffLine.size(); i++) {
@@ -2907,7 +2504,6 @@ continue;
                     {
                         if (diffLine.get(i).contains(s)) {
                             needDelete = false;
-
                             break;
                         }
                     }
@@ -2940,22 +2536,17 @@ continue;
                                     allLhs = allLine.get(j).substring(allLine.get(j).indexOf("parameter"), allLine.get(j).indexOf("=")).trim();
                                     allLhs = allLhs.replace("parameterVariable", "REPLACE") + ";";
                                 }
-
-
                             }
                             if ((rhsExist) && allLine.get(j).contains("parameter")) {
                                 if (allLhs.length() > 0) {
                                     String newDiff = diff.replace(rhs, allLhs);
                                     diffLine.set(i, newDiff);
                                 }
-
                                 break;
                             }
                         }
                     }
                 }
-
-
                 expressionIterator = 0;
                 assignmentIterator = 0;
                 classNameAvailable = false;
@@ -2991,9 +2582,6 @@ continue;
                 lastLineReplacement = lastLineReplacement.replace("classNameVariable", "classIden");
                 lastLineReplacement = lastLineReplacement.replace("parameterVariable", "iden");
                 allLine.set(allLine.size()-1, lastLineReplacement);
-
-
-
                 classChangeFlag = false;
                 for (int i = 0; i < diffLine.size(); i++) {
                     String replacementString = diffLine.get(i).replace("parameterVariable", "iden");
@@ -3053,17 +2641,10 @@ continue;
                     writer.println(";");
                 }
                 writer.println("@@");
-//                for (int i = 0; i < allLine.size() - 1; i++) {
-//                    writer.println(allLine.get(i).trim());
-//                }
                 writer.println("...");
                 writer.println("+ if (" + ifCondition + ") {");
 
-                // Try it Here
-
                 appearInDiff = new ArrayList<>();
-                System.out.println("THIS IS DIFFLINE");
-                System.out.println(diffLine);
                 for (int i = 0; i < diffLine.size() - 1; i++) {
                     writer.write("+ ");
                     if (diffLine.get(i).contains("iden")) {
@@ -3102,13 +2683,6 @@ continue;
                         }
                     }
                 }
-
-
-//                for (int i = 0; i < diffLine.size() - 1; i++) {
-//                    writer.write("+ ");
-//                    writer.println(diffLine.get(i).trim());
-//                }
-//                otherLine = diffLine.get(diffLine.size() - 1);
                 writer.print("+ ");
                 if (otherLine.indexOf("=") == -1) {
                     writer.print("tempFunctionReturnValue = ");
@@ -3125,9 +2699,6 @@ continue;
                 writer.println();
             }
 
-            // Put the method here
-            // Should also add list of varname and methodname
-            // Writing the method and class stuff
             try {
                 String methodFilename = "bottomupper-" + oldApiName + "-" + newApiName + ".cocci";
                 PrintWriter methodWriter = new PrintWriter(methodFilename);
@@ -3208,16 +2779,9 @@ continue;
                     methodWriter.println("###SEPARATOR###");
                 }
                 methodWriter.close();
-
-
-
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
-
-
-
-
             writer.close();
         } else {
             System.out.println("Error, no update example found");
@@ -3225,7 +2789,6 @@ continue;
         }
         return "";
     }
-
 
 
     private static String methodClassName = "";
@@ -3285,8 +2848,6 @@ continue;
                             listNewStmt.add(s.nextLine());
                         }
                         s.close();
-
-                        // CHANGE THE METHOD CALL HERE TO ADD THE CLASSNAME
                         for (int j = 0; j < listNewStmt.size(); j++) {
                             String currentStmt = listNewStmt.get(j);
                             for (int i = 0; i < newMethodList.size(); i++) {
@@ -3300,7 +2861,6 @@ continue;
                                 NodeList<Statement> listOriginalStmt = block.getStatements();
                                 for (int i = 0; i < listOriginalStmt.size(); i++) {
                                     Statement currStmt = listOriginalStmt.get(i);
-                                    // Check if its the correct place
                                     if (currStmt.toString().contains(statement.toString())) {
                                         String toReplace = currStmt.toString();
 
@@ -3331,9 +2891,6 @@ continue;
         String functionNameOld = getFunctionName(fullyQualifiedNameOld);
         String functionNameNew = getFunctionName(fullyQualifiedNameNew);
 
-
-        // add method here
-        // Read the file first
         String filename = "bottomupper-" + functionNameOld + "-" + functionNameNew + ".cocci";
         BufferedReader reader;
         ArrayList<String> listMethodString = new ArrayList<>();
@@ -3385,16 +2942,6 @@ continue;
             System.out.println("FILE NOT FOUND");
         }
 
-
-
-        // Process the update cocci first according to the target file
-        // This is to make sure that there are no duplicate name or method, etc
-
-
-
-
-
-
         CompilationUnit cu = null;
         try {
             cu = StaticJavaParser.parse(file);
@@ -3403,11 +2950,6 @@ continue;
         }
 
         List<String> temp = new ArrayList<>();
-
-
-
-//        cu.addClass()
-//        ClassOrInterfaceDeclaration classForMethod = cu.findFirst(ClassOrInterfaceDeclaration.class).get();
 
         String className = "CocciEvolveMethod";
         boolean isNameUsed = false;
@@ -3421,8 +2963,6 @@ continue;
                 }
             }
         } while (isNameUsed);
-
-
         if (listMethodString.size() > 0) {
             ClassOrInterfaceDeclaration classForMethod = cu.addClass(className);
             classForMethod.setPublic(false);
@@ -3443,12 +2983,6 @@ continue;
             }
         }
 
-        // What to do to make sure it is unique
-        // Change all method call from listMethod in the coccinelle script to make sure it has the right scope
-        // Change all name that is added from the update in the coccinelle script if the same name already exist in the
-        // target file. First of all, loop through all the content of listName to check whether they exist in the
-        // target. add the existing name to a separate list
-
         // add to the list same name
         ArrayList<String> listSameName = new ArrayList<>();
         for (int i = 0; i < listAddedName.size(); i++) {
@@ -3461,14 +2995,7 @@ continue;
                 }
             }
         }
-
-        // To make it more robust should first check these conditions:
-        // 1. Check if any of the listSameName contains the "KEYWORD" or the APINAME because it can become a problem.
-        // 2. Check if any of the listMethodName contains the "KEYWORD" or APINAME or same value as the one inside listAddedName
-
         StringBuilder newCocciString = new StringBuilder();
-
-
         Map<String, String> mapNewName = new HashMap<>();
         File tempFile = new File(updateCocciPath);
         Scanner scan = null;
@@ -3481,22 +3008,18 @@ continue;
 
         while (scan.hasNextLine()) {
             String currentLine = scan.nextLine();
-            // only check the name and methodname inside the new parameter line
             if (currentLine.contains("+") && !currentLine.contains("classIden") && !currentLine.contains("{") && !currentLine.contains("}")) {
-                // for beforeEq just processName
-                // for afterEq process both name and method
-                // processing aftereq for method
                 for (int i = 0; i < listAddedMethodName.size(); i++) {
                     String afterEq = currentLine.substring(currentLine.indexOf("=") + 1).trim();
                     String currentMethod = listAddedMethodName.get(i);
                     boolean isMethod;
-                    // Check if it is method by looking for the open bracket after the name
+
                     if (afterEq.contains(currentMethod)) {
                         int looper = currentMethod.length();
                         while (true) {
                             char currentChar = afterEq.charAt(afterEq.indexOf(currentMethod) + looper);
                             if (currentChar == ' ') {
-                                // It is whitespace, go to the next loop
+
                                 looper += 1;
                             } else if (currentChar == '(') {
                                 isMethod = true;
@@ -3514,13 +3037,9 @@ continue;
                     }
                 }
 
-
-                // processing wholeLine for duplicated name
                 for (int i = 0; i < listSameName.size(); i++) {
                     String currentName = listSameName.get(i);
                     if (currentLine.contains(currentName)) {
-                        // Check if newName is already in hashmap
-                        // if not, create a new name
                         if (!mapNewName.containsKey(currentName)) {
                             // newName not in hashmap, create new name
                             String newName = currentName + "_1";
@@ -3555,9 +3074,6 @@ continue;
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // For the newly added class, we should also make sure that if they use any method from the
-        // listAddedMethodName, it should be fixed to have the correct scope!!!
         for (int i = 0; i < listClassString.size(); i++) {
             String currentClass = listClassString.get(i);
             for (int j = 0; j < listAddedMethodName.size(); j++) {
@@ -3574,8 +3090,6 @@ continue;
         apiLocate.visit(cu, temp);
 
         // Run the readability scoring here for the before normalization result
-        System.out.println("READABILITY SCORER!");
-        System.out.println("TARGET FILE PATH: " + targetFilePath);
         ReadabilityScorer readabilityScorer = new ReadabilityScorer(functionNameOld, functionNameNew);
         readabilityScorer.runReadabilityScorer(cu, false, tempOutputName);
 
@@ -3583,9 +3097,6 @@ continue;
 
         // Run the readability scoring here
         readabilityScorer.runReadabilityScorer(cu, true, tempOutputName);
-
-
-
         file.delete();
         try {
             Files.write(new File(targetFilePath).toPath(), Collections.singleton(cu.toString()), StandardCharsets.UTF_8);
@@ -3610,92 +3121,27 @@ continue;
 
     }
 
+
+
     public static void main(String[] args) throws FileNotFoundException {
         SymbolPreprocess.initTypeSolver();
-        if (args.length == 5) {
-            // Run cocci update script
-            if (validateInput(args) == false) {
-                System.out.println("Provided API is incorrect, quitting...");
-                return;
+        // Parsing the input
+        if (args.length == 7) {
+            // Update Patch Creation
+            if (!args[0].equals("--generate-patch")) {
+                System.out.println("Run Argument Invalid");
+                System.exit(1);
             }
-            String oldApiName = args[0].trim();
-            String newApiName = args[1].trim();
-
-
-            String folderDirectory = modifyFile(args[2].trim());
-
-            boolean flagSameName = false;
-
-            // Create the processedFile (temporaryOutput.java)
-            String functionName = getFunctionName(oldApiName);
-            // Check if same number of parameter and same name of API
-            if (getFunctionName(oldApiName).equals(getFunctionName(newApiName))) {
-                if (getNumParameter(oldApiName) == getNumParameter(newApiName)) {
-                    // Special processing
-                    flagSameName = true;
-
-                }
-            }
-            if (flagSameName) {
-                SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
-                oldApiName = oldApiName.replace(functionName, functionName + "OLD");
-                newApiName = newApiName.replace(functionName, functionName + "NEW");
-            }
-
-            // Normalize temporaryOutput.java
-            SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), false);
-            newNormalizeFileCocci(oldApiName, folderDirectory);
-            try {
-                Thread.sleep(1200);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            String updateCocciPath = args[4].trim();
-            String outputPath = args[3].trim();
-            System.out.println("OUTPUT PATH: " + outputPath);
-            String tempOutputName = outputPath.substring(outputPath.lastIndexOf("/") + 1, outputPath.lastIndexOf("."));
-            StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + updateCocciPath + " " + "temporaryOutput.java" + " --in-place");
-            runUpdate(oldApiName, newApiName, folderDirectory, updateCocciPath, tempOutputName);
-
-
-            if (flagSameName) {
-                SymbolPreprocess.revertOriginalName(folderDirectory, functionName);
-            }
-            DuplicateFix.fixDuplicate(folderDirectory);
-
-            // Variable name denormalization
-
-
-
-            // Copying file to the correct output path
-            Path originalFile = Paths.get("temporaryOutput.java");
-            Path copiedFile = Paths.get(outputPath);
-            try {
-                Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else if (args.length == 3) {
-
-            // Run cocci update script
-            if (validateInput(args) == false) {
-                System.out.println("Provided API is incorrect, quitting...");
-                return;
-            }
-            String oldApiName = args[0].trim();
-            String newApiName = args[1].trim();
-            // Create the processedFile (temporaryOutput.java)
-            String folderDirectory = modifyFile(args[2].trim());
-
-            // Special processing
+            String oldApiName = args[1].trim();
+            String newApiName = args[2].trim();
+            String filePath = args[4].trim();
+            String folderDirectory = modifyFile(filePath);
+            String outputPath = args[6].trim();
             boolean flagSameName = false;
             String functionName = getFunctionName(oldApiName);
-            // Check if same number of parameter and same name of API
             if (getFunctionName(oldApiName).equals(getFunctionName(newApiName))) {
                 if (getNumParameter(oldApiName) == getNumParameter(newApiName)) {
-                    // Special processing
                     flagSameName = true;
-
                 }
             }
             if (flagSameName) {
@@ -3718,35 +3164,222 @@ continue;
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            List<ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
-
-            System.out.println("This is listIfs");
-            System.out.println(listIfs);
+            List<Pipeline.ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
             String oldReturnValue = getReturnValue(oldApiName);
             String newReturnValue = getReturnValue(newApiName);
             boolean haveReturn = false;
             if (!oldReturnValue.equals("void") || !newReturnValue.equals("void")) {
                 haveReturn = true;
             }
-            createUpdateApiCocci(listIfs, getFunctionName(oldApiName), getFunctionName(newApiName), haveReturn);
+            createUpdateApiCocci(listIfs, getFunctionName(oldApiName), getFunctionName(newApiName), haveReturn, outputPath);
+            System.out.println("Update Patch Created!");
+            File delete = new File("temporaryOutput.java");
+            delete.delete();
+            delete = new File("tempEdit.txt");
+            delete.delete();
+            delete = new File("tempEdit1.txt");
+            delete.delete();
+        } else if (args.length == 9) {
+            // Update Patch Application
+            if (!args[0].equals("--apply-patch")) {
+                System.out.println("Run Argument Invalid");
+                System.exit(1);
+            }
+            String oldApiName = args[1].trim();
+            String newApiName = args[2].trim();
+            String targetPath = args[4].trim();
+            String folderDirectory = modifyFile(targetPath);
+            String updateCocciPath = args[6].trim();
+            String outputPath = args[8].trim();
+
+            boolean flagSameName = false;
+            // Create the processedFile (temporaryOutput.java)
+            String functionName = getFunctionName(oldApiName);
+            // Check if same number of parameter and same name of API
+            if (getFunctionName(oldApiName).equals(getFunctionName(newApiName))) {
+                if (getNumParameter(oldApiName) == getNumParameter(newApiName)) {
+                    // Special processing
+                    flagSameName = true;
+                }
+            }
+            if (flagSameName) {
+                SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
+                oldApiName = oldApiName.replace(functionName, functionName + "OLD");
+                newApiName = newApiName.replace(functionName, functionName + "NEW");
+            }
+//
+//            // Normalize temporaryOutput.java
+            SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), false);
+            newNormalizeFileCocci(oldApiName, folderDirectory);
+            try {
+                Thread.sleep(1200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+//            String outputPath = args[3].trim();
+            String tempOutputName = outputPath.substring(outputPath.lastIndexOf("/") + 1, outputPath.lastIndexOf("."));
+            StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + updateCocciPath + " " + "temporaryOutput.java" + " --in-place");
+            runUpdate(oldApiName, newApiName, folderDirectory, updateCocciPath, tempOutputName);
+            if (flagSameName) {
+                SymbolPreprocess.revertOriginalName(folderDirectory, functionName);
+            }
+            DuplicateFix.fixDuplicate(folderDirectory);
+//
+            // Copying file to the correct output path
+            Path originalFile = Paths.get("temporaryOutput.java");
+            Path copiedFile = Paths.get(outputPath);
+            try {
+                Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            File delete = new File("temporaryOutput.java");
+            delete.delete();
+            delete = new File("tempEdit.txt");
+            delete.delete();
+            delete = new File("tempEdit1.txt");
+            delete.delete();
+            delete = new File(tempOutputName);
+            delete.delete();
+            delete = new File("updateEdit.txt");
+            delete.delete();
+            delete = new File("updateEdit1.txt");
+            delete.delete();
+            delete = new File("tempUpdate.cocci");
+            delete.delete();
+
+            System.out.println("Update successfully applied!");
         } else {
-            System.out.println("No parameter given!!!");
-            System.out.println("USAGE PARAMETER: ");
-            System.out.println("<OLD_API_AND_PARAMETER> <NEW_API_AND_PARAMETER> <TARGET_PATH> <OUTPUT_PATH> <COCCI_PATH>");
-            return;
+            System.out.println("USAGE:");
+            System.out.println("    Patch Creation   : java -jar AndroEvolve.jar --generate-patch <deprecated_api> <updated_api> --input <example_filepath> --output <output_path>");
+            System.out.println("    Patch Application: java -jar AndroEvolve.jar --apply-patch <deprecated_api> <updated_api> --input <target_file> --patch <semantic_patch> --output <output_path>");
+            System.exit(1);
         }
-
-
-
-//        normalizeFileCocci(newApiName, folderDirectory);
-//        try {
-//            Thread.sleep(1200);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//        List<ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
-//        createUpdateApiCocci(listIfs, getFunctionName(oldApiName), getFunctionName(newApiName));
     }
+//
+//    public static void main(String[] args) throws FileNotFoundException {
+//        SymbolPreprocess.initTypeSolver();
+//        if (args.length == 5) {
+//            // Run cocci update script
+//            if (validateInput(args) == false) {
+//                System.out.println("Provided API is incorrect, quitting...");
+//                return;
+//            }
+//            String oldApiName = args[0].trim();
+//            String newApiName = args[1].trim();
+//
+//
+//            String folderDirectory = modifyFile(args[2].trim());
+//
+//            boolean flagSameName = false;
+//            // Create the processedFile (temporaryOutput.java)
+//            String functionName = getFunctionName(oldApiName);
+//            // Check if same number of parameter and same name of API
+//            if (getFunctionName(oldApiName).equals(getFunctionName(newApiName))) {
+//                if (getNumParameter(oldApiName) == getNumParameter(newApiName)) {
+//                    // Special processing
+//                    flagSameName = true;
+//
+//                }
+//            }
+//            if (flagSameName) {
+//                SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
+//                oldApiName = oldApiName.replace(functionName, functionName + "OLD");
+//                newApiName = newApiName.replace(functionName, functionName + "NEW");
+//            }
+//
+//            // Normalize temporaryOutput.java
+//            SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), false);
+//            newNormalizeFileCocci(oldApiName, folderDirectory);
+//            try {
+//                Thread.sleep(1200);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//            String updateCocciPath = args[4].trim();
+//            String outputPath = args[3].trim();
+//            String tempOutputName = outputPath.substring(outputPath.lastIndexOf("/") + 1, outputPath.lastIndexOf("."));
+//            StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + updateCocciPath + " " + "temporaryOutput.java" + " --in-place");
+//            runUpdate(oldApiName, newApiName, folderDirectory, updateCocciPath, tempOutputName);
+//
+//
+//            if (flagSameName) {
+//                SymbolPreprocess.revertOriginalName(folderDirectory, functionName);
+//            }
+//            DuplicateFix.fixDuplicate(folderDirectory);
+//
+//            // Variable name denormalization
+//
+//
+//
+//            // Copying file to the correct output path
+//            Path originalFile = Paths.get("temporaryOutput.java");
+//            Path copiedFile = Paths.get(outputPath);
+//            try {
+//                Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        } else if (args.length == 3) {
+//
+//            // Run cocci update script
+//            if (validateInput(args) == false) {
+//                System.out.println("Provided API is incorrect, quitting...");
+//                return;
+//            }
+//            String oldApiName = args[0].trim();
+//            String newApiName = args[1].trim();
+//            // Create the processedFile (temporaryOutput.java)
+//            String folderDirectory = modifyFile(args[2].trim());
+//
+//            // Special processing
+//            boolean flagSameName = false;
+//            String functionName = getFunctionName(oldApiName);
+//            // Check if same number of parameter and same name of API
+//            if (getFunctionName(oldApiName).equals(getFunctionName(newApiName))) {
+//                if (getNumParameter(oldApiName) == getNumParameter(newApiName)) {
+//                    // Special processing
+//                    flagSameName = true;
+//
+//                }
+//            }
+//            if (flagSameName) {
+//                SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
+//                oldApiName = oldApiName.replace(functionName, functionName + "OLD");
+//                newApiName = newApiName.replace(functionName, functionName + "NEW");
+//            }
+//            // Normalize temporaryOutput.java
+//            SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), true);
+//            SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(newApiName), true);
+//            newNormalizeFileCocci(oldApiName, folderDirectory);
+//            try {
+//                Thread.sleep(1200);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//            newNormalizeFileCocci(newApiName, folderDirectory);
+//            try {
+//                Thread.sleep(1200);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//            List<ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
+//
+//            String oldReturnValue = getReturnValue(oldApiName);
+//            String newReturnValue = getReturnValue(newApiName);
+//            boolean haveReturn = false;
+//            if (!oldReturnValue.equals("void") || !newReturnValue.equals("void")) {
+//                haveReturn = true;
+//            }
+//            createUpdateApiCocci(listIfs, getFunctionName(oldApiName), getFunctionName(newApiName), haveReturn);
+//        } else {
+//            System.out.println("No parameter given!!!");
+//            System.out.println("USAGE PARAMETER: ");
+//            System.out.println("<OLD_API_AND_PARAMETER> <NEW_API_AND_PARAMETER> <TARGET_PATH> <OUTPUT_PATH> <COCCI_PATH>");
+//            return;
+//        }
+//
+//    }
 }
 
 

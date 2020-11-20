@@ -30,7 +30,6 @@ public class DuplicateFix {
 
         public VariableDeclarationExpr visit (VariableDeclarationExpr varDecExpr, List<String> collector) {
             super.visit(varDecExpr, collector);
-//            System.out.println(varDecExpr);
             boolean containImportant = false;
             String[] keyPhrases = {"parameterVariable", "classNameVariable", "tempFunctionReturnValue"};
             String currentDeclaration = "";

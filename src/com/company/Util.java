@@ -26,7 +26,6 @@ public class Util {
 
     public static String getFunctionName(String fullyQualifiedName) {
         if (!validateAPI(fullyQualifiedName, -1)) {
-            System.out.println("Fully Qualified Name is wrong");
             return "";
         }
         int hashtagPosition = fullyQualifiedName.indexOf('#');
@@ -45,7 +44,6 @@ public class Util {
             int commaCount = parameterString.length() - parameterString.replace(",", "").length();
             result += commaCount;
         }
-//        System.out.println(result);
         return result;
     }
 
@@ -57,7 +55,6 @@ public class Util {
     public static String getParameterType (String fullyQualifiedName, int paramNumber) {
         int numParam = getNumParameter(fullyQualifiedName);
         if (paramNumber > numParam + 1) {
-            System.out.println("ParamNumber is bigger than the number of param");
             return "";
         } else {
             String parameters = fullyQualifiedName.substring(fullyQualifiedName.indexOf("(") + 1, fullyQualifiedName.indexOf(")"));
@@ -148,7 +145,6 @@ public class Util {
 
         // Check if there is a whitespace in the function name
         String functionName = arg.substring(0,startBracketLocation).trim();
-//        System.out.println("FunctionName: " + functionName);
         Pattern pattern = Pattern.compile("\\s");
         if (pattern.matcher(functionName).find()) {
             System.out.println("Whitespace in function name is invalid");
@@ -158,16 +154,13 @@ public class Util {
         // Check if the provided parameter is correct
         String[] parameterList;
         String parameter = arg.substring(startBracketLocation + 1, endBracketLocation).trim();
-        System.out.println(parameter);
         if (parameter.length() == 0) {
-            System.out.println("No parameter");
             parameterList = new String[0];
         } else {
             parameterList = parameter.split(",");
             for (int i = 0; i < parameterList.length; i++) {
                 parameterList[i] = parameterList[i].trim();
                 if (pattern.matcher(parameterList[i]).find()) {
-                    System.out.println("Whitespace in parameter is invalid");
                     return false;
                 }
             }
@@ -180,7 +173,6 @@ public class Util {
             }
         }
         cleanedArgument = cleanedArgument.concat(")");
-        System.out.println("Cleaned Argument: " + cleanedArgument);
 //        if (numAPI == 0) {
 //            oldAPI = new ApiDescription(functionName, parameterList.length);
 //        } else if (numAPI == 1){
