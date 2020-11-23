@@ -6,7 +6,7 @@ AndroEvolve provide two main functionalities:
 2. Transformation Application: Use the created update patch, API mapping, and an input target file to update the deprecated API within the target file according the transformation specified in the update patch.
 
 The architecture and workflow of AndroEvolve is provided in the following figure:
-![AndroEvolve Architecure](./figures/architecture.JPG)
+![AndroEvolve Architecure](./figures/architecture.png)
 
 ## Requirements
 AndroEvolve is compiled with several dependencies:
@@ -24,6 +24,8 @@ This repository is also provided with the IntelliJ project configuration file wh
 
 AndroEvolve utilize Coccinelle4J [[1]](#1), which source code and replication package is available in the following link: [Coccinelle4J](https://ink.library.smu.edu.sg/cgi/viewcontent.cgi?article=5816&context=sis_research).
 
+AndroEvolve also requires the Android SDK JAR file for its symbol solver. Put the Android JAR file in an android_jars/ folder.
+
 Using AndroEvolve JAR within the Coccinelle4J replication package is the recommended approach to easily run AndroEvolve.
 
 ## AndroEvolve Replication and JAR
@@ -31,6 +33,10 @@ Using AndroEvolve JAR within the Coccinelle4J replication package is the recomme
 The compiled JAR file of AndroEvolve is available for easier use in the following link: [JAR link](https://drive.google.com/file/d/1e13NiA8pZWRFZEHPKSBf8aIguLamWFaX/view?usp=sharing)
 
 We also provided a docker image containing the Coccinelle4J implementation, AndroEvolve JAR file, and dataset used in AndroEvolve's evaluation. This docker can be pulled from docker hub using the following commands:
+
+```
+docker pull androevolve/icse
+```
 
 ## Usage Commands
 
