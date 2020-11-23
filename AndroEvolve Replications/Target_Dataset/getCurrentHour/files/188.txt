@@ -1,0 +1,101 @@
+package com.example.joongwonkim.somulbo2.timeFragment;
+
+
+import android.content.Context;
+import android.os.Bundle;
+import android.support.design.widget.TabLayout;
+import android.support.v4.app.Fragment;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TimePicker;
+
+import com.example.joongwonkim.somulbo2.R;
+import com.example.joongwonkim.somulbo2.StateActivity;
+import com.example.joongwonkim.somulbo2.adapter.TabPageAdapter;
+import com.example.joongwonkim.somulbo2.data.Time;
+import com.example.joongwonkim.somulbo2.fragmenttofragmentinterface.FragmentDataSendInterface;
+
+/**
+ * A simple {@link Fragment} subclass.
+ */
+public class TimeStartFragment extends Fragment {
+
+    TimePicker timePicker;
+    Button buttonTimeStart;
+
+    String selectedHour;
+    String selectedMin;
+
+    FragmentDataSendInterface mListener;
+
+
+    public TimeStartFragment() {
+
+    }
+
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+
+        View view =inflater.inflate(R.layout.fragment_time_start, container, false);
+
+        // Inflate the layout for this fragment
+
+
+        timePicker = (TimePicker)view.findViewById(R.id.timepicker_start);
+        selectedHour = timePicker.getCurrentHour().toString();
+        selectedMin = timePicker.getCurrentHour().toString();
+
+
+
+
+        timePicker.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
+            @Override
+            public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
+
+                Integer hour = hourOfDay;
+                Integer min = minute;
+
+                selectedHour = hour.toString();
+                selectedMin = min.toString();
+
+
+            }
+        });
+        buttonTimeStart = view.findViewById(R.id.btn_time_s);
+
+
+
+        buttonTimeStart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                selectedHour = timePicker.getCurrentHour().toString();
+                Time time = new Time();
+                time.setHour(selectedHour);
+                time.setMin(selectedMin);
+                mListener.myStartTimeStart(selectedHour , selectedMin);
+                mListener.transferTab();
+
+
+            }
+        });
+
+        return view;
+
+    }
+
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+
+        mListener = (StateActivity) context;
+
+
+    }
+
+}
