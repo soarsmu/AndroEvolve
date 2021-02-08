@@ -129,5 +129,6 @@ backButton.setOnClickListener(new View.OnClickListener() {
 
 ## References
 <a id="1">[1]</a> S.  A.  Haryono,  F.  Thung,  D.  Lo,  L.  Jiang,  J.  Lawall,  H.  J.  Kang,L.  Serrano,  and  G.  Muller,  “AndroEvolve:  Automated  Android  APIupdate with data flow analysis and variable denormalization,” 2020.
+
 <a id="2">[2]</a> Hong Jin Kang, Ferdian Thung, Julia Lawall, Gilles Muller, Lingxiao Jiang, and David Lo. Semantic patches for Java program transformation (experience report). In 33rd European Conference on Object-Oriented Programming (ECOOP 2019). Schloss Dagstuhl-Leibniz-Zentrum fuer Informatik, 2019.
 
