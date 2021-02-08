@@ -8,6 +8,8 @@ AndroEvolve provide two main functionalities:
 The architecture and workflow of AndroEvolve is provided in the following figure:
 ![AndroEvolve Architecure](./figures/architecture.png)
 
+Detailed description on each components of AndroEvolve is available in our full paper [[1]](#1), available in the following arxiv link: https://arxiv.org/abs/2011.05020
+
 ## Requirements
 AndroEvolve is compiled with several dependencies:
 
@@ -22,7 +24,7 @@ This repository is also provided with the IntelliJ project configuration file wh
 
 ## Run Requirements
 
-AndroEvolve utilize Coccinelle4J [[1]](#1), which source code and replication package is available in the following link: [Coccinelle4J](https://ink.library.smu.edu.sg/cgi/viewcontent.cgi?article=5816&context=sis_research).
+AndroEvolve utilize Coccinelle4J [[2]](#2), which source code and replication package is available in the following link: [Coccinelle4J](https://ink.library.smu.edu.sg/cgi/viewcontent.cgi?article=5816&context=sis_research).
 
 AndroEvolve also requires the Android SDK JAR file for its symbol solver. Put the Android JAR file in an android_jars/ folder.
 
@@ -126,5 +128,6 @@ backButton.setOnClickListener(new View.OnClickListener() {
 ```
 
 ## References
-<a id="1">[1]</a> Hong Jin Kang, Ferdian Thung, Julia Lawall, Gilles Muller, Lingxiao Jiang, and David Lo. Semantic patches for Java program transformation (experience report). In 33rd European Conference on Object-Oriented Programming (ECOOP 2019). Schloss Dagstuhl-Leibniz-Zentrum fuer Informatik, 2019.
+<a id="1">[1]</a> S.  A.  Haryono,  F.  Thung,  D.  Lo,  L.  Jiang,  J.  Lawall,  H.  J.  Kang,L.  Serrano,  and  G.  Muller,  “AndroEvolve:  Automated  Android  APIupdate with data flow analysis and variable denormalization,” 2020.
+<a id="2">[2]</a> Hong Jin Kang, Ferdian Thung, Julia Lawall, Gilles Muller, Lingxiao Jiang, and David Lo. Semantic patches for Java program transformation (experience report). In 33rd European Conference on Object-Oriented Programming (ECOOP 2019). Schloss Dagstuhl-Leibniz-Zentrum fuer Informatik, 2019.
 
