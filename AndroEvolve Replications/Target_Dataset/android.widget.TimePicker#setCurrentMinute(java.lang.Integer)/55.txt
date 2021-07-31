@@ -1,0 +1,42 @@
+package nu.style;
+
+import java.util.Calendar;
+
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.widget.TimePicker;
+
+public class LimitedRangeTimePickerDialog extends TimePickerDialog {
+
+    private final Calendar mMinTime;
+    private final Calendar mMaxTime;
+    private final Calendar mCurrentTime;
+
+    public LimitedRangeTimePickerDialog(Context context, OnTimeSetListener callBack, int hourOfDay,
+            int minute, boolean is24HourView, Calendar minTime, Calendar maxTime,
+            Calendar currentTime) {
+        super(context, callBack, hourOfDay, minute, is24HourView);
+        mMinTime = minTime;
+        mMaxTime = maxTime;
+        mCurrentTime = currentTime;
+    }
+
+    @Override
+    public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
+        Calendar newDate = Calendar.getInstance();
+        newDate.set(mCurrentTime.get(Calendar.YEAR), mCurrentTime.get(Calendar.MONTH),
+                mCurrentTime.get(Calendar.DAY_OF_MONTH), hourOfDay, minute);
+
+        if (mMinTime != null && mMinTime.after(newDate)) {
+            view.setCurrentHour(mMinTime.get(Calendar.HOUR_OF_DAY));
+            view.setCurrentMinute(mMinTime.get(Calendar.MINUTE));
+        } else if (mMaxTime != null && mMaxTime.before(newDate)) {
+            view.setCurrentHour(mMaxTime.get(Calendar.HOUR_OF_DAY));
+            view.setCurrentMinute(mMaxTime.get(Calendar.MINUTE));
+        } else {
+            view.setCurrentHour(hourOfDay);
+            view.setCurrentMinute(minute);
+        }
+    }
+
+}

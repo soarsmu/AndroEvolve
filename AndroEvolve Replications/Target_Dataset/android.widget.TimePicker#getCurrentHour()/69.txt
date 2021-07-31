@@ -1,0 +1,84 @@
+package com.xy.jjl.utils;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
+import com.xy.jjl.R;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TimePicker;
+import android.widget.TimePicker.OnTimeChangedListener;
+
+public class TimePickerDialogUtil implements OnTimeChangedListener{
+	
+    private TimePicker timePicker1;  
+    private TimePicker timePicker2;  
+    private AlertDialog ad;  
+    private String beginTime;  
+    private String endTime;  
+    private Activity activity; 
+    
+    public TimePickerDialogUtil(Activity activity,String initTime){
+    	this.activity=activity;
+    	String[] str=initTime.split("-");
+    	beginTime=str[0];
+    	endTime=str[1];
+    }
+    
+	@Override
+	public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
+		
+		beginTime=setStr(Integer.toString(timePicker1.getCurrentHour())) + ":" + setStr(Integer.toString(timePicker1.getCurrentMinute()));
+		endTime=setStr(Integer.toString(timePicker2.getCurrentHour())) + ":" + setStr(Integer.toString(timePicker2.getCurrentMinute()));
+	}
+	
+	private String setStr(String str){
+		if(str.length()==1){
+			str="0"+str;
+		}
+		return str;
+	}
+	
+    public void init(TimePicker timePicker1, TimePicker timePicker2) {  
+        Calendar calendar = Calendar.getInstance();  
+        
+        timePicker1.setCurrentHour(calendar.get(Calendar.HOUR_OF_DAY));  
+        timePicker1.setCurrentMinute(calendar.get(Calendar.MINUTE));  
+        
+        timePicker2.setCurrentHour(calendar.get(Calendar.HOUR_OF_DAY));  
+        timePicker2.setCurrentMinute(calendar.get(Calendar.MINUTE)); 
+    } 
+	
+	public AlertDialog TimePickerDialog(final EditText inputDate) {  
+		 
+	        LinearLayout dateTimeLayout = (LinearLayout) activity.getLayoutInflater().inflate(R.layout.time_picker, null);  
+	        timePicker1 = (TimePicker) dateTimeLayout.findViewById(R.id.timepicker1);  
+	        timePicker2 = (TimePicker) dateTimeLayout.findViewById(R.id.timepicker2);  
+	        init(timePicker1, timePicker2);  
+	        timePicker1.setIs24HourView(true);  
+	        timePicker1.setOnTimeChangedListener(this);  
+	        
+	        timePicker2.setIs24HourView(true);  
+	        timePicker2.setOnTimeChangedListener(this); 
+	  
+	        ad = new AlertDialog.Builder(activity)  
+	        		.setTitle("请选择优惠时间段")
+	                .setView(dateTimeLayout)  
+	                .setPositiveButton("设置", new DialogInterface.OnClickListener() {  
+	                    public void onClick(DialogInterface dialog, int whichButton) {  
+	                        inputDate.setText(beginTime + " - " + endTime); 
+	                    }  
+	                })  
+	                .setNegativeButton("取消", new DialogInterface.OnClickListener() {  
+	                    public void onClick(DialogInterface dialog, int whichButton) {  
+	                        //inputDate.setText("");  
+	                    }  
+	                }).show();  
+	  
+	        return ad;  
+	    }  
+}

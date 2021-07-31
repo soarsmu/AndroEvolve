@@ -1,0 +1,158 @@
+package android.app.gpsdemo;
+
+import android.content.Context;
+import android.location.GpsStatus;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.location.LocationProvider;
+import android.os.Bundle;
+import android.util.Log;
+
+public class MyGps implements LocationListener, GpsStatus.Listener {
+    private static final String TAG = "MyGps";
+
+    private LocationManager mLocationManager = null;
+    private MyGpsInfo mGpsInfo = null;
+    private Context mContext = null;
+    private IMessageControl iMessageControl = null;
+
+    private boolean isOpen;
+
+    /** */
+    public MyGps(Context context, IMessageControl iMessageControl) {
+        mContext = context;
+        mGpsInfo = new MyGpsInfo();
+        this.iMessageControl = iMessageControl;
+        mLocationManager = (LocationManager) mContext
+                .getSystemService(Context.LOCATION_SERVICE);
+    }
+
+    /**
+     * 释放资源，与构造对应
+     */
+    void release() {
+        closeGps();
+        mContext = null;
+        mLocationManager = null;
+        mGpsInfo = null;
+        iMessageControl = null;
+    }
+
+    /**
+     * 开启GPS
+     */
+    void openGps() {
+        if (isOpen) {
+            return;
+        }
+
+        if (null != mLocationManager) {
+            mLocationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER, 1000, 0, this);
+            mLocationManager.addGpsStatusListener(this);
+            isOpen = true;
+            // workingTime = System.currentTimeMillis();
+            Log.e(TAG, "ggggggggg openGps()");
+        }
+    }
+
+    /**
+     * 关闭GPS
+     */
+    void closeGps() {
+        if (!isOpen) {
+            return;
+        }
+
+        if (null != mLocationManager) {
+            mLocationManager.removeGpsStatusListener(this);
+            mLocationManager.removeUpdates(this);
+            isOpen = false;
+            Log.e(TAG, "ggggggggg closeGps()");
+            // Log.e( TAG, "ggggggggg GPS workingTime = " +
+            // (System.currentTimeMillis() -
+            // workingTime) / (1000 * 60) );
+        }
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Log.e(TAG, "onLocationChanged()");
+        mGpsInfo.setLongitude((float) location.getLongitude());
+        mGpsInfo.setLatitude((float) location.getLatitude());
+        sendMessage(IMessageControl.LOCATION_CHANGED, mGpsInfo);
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        Log.e(TAG, "onStatusChanged()");
+        String msgObj = null;
+        switch (status) {
+            case LocationProvider.AVAILABLE:
+                Log.d(TAG, "onStatusChanged, LocationProvider.AVAILABLE");
+                msgObj = "AVAILABLE";
+                break;
+            case LocationProvider.OUT_OF_SERVICE:
+                Log.d(TAG, "onStatusChanged, LocationProvider.OUT_OF_SERVICE");
+                msgObj = "OUT_OF_SERVICE";
+                break;
+            case LocationProvider.TEMPORARILY_UNAVAILABLE:
+                Log.d(TAG,
+                        "onStatusChanged, LocationProvider.TEMPORARILY_UNAVAILABLE");
+                msgObj = "TEMPORARILY_UNAVAILABLE";
+                break;
+            default:
+                break;
+        }
+        sendMessage(IMessageControl.STATUS_CHANGED, msgObj);
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+        Log.e(TAG, "onProviderEnabled()");
+        sendMessage(IMessageControl.PROVIDER, "onProviderEnabled");
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+        Log.e(TAG, "onProviderDisabled()");
+        sendMessage(IMessageControl.PROVIDER, "onProviderDisabled");
+    }
+
+    @Override
+    public void onGpsStatusChanged(int event) {
+        Log.e(TAG, "onGpsStatusChanged()");
+        String msgObj = null;
+        switch (event) {
+            case GpsStatus.GPS_EVENT_STARTED:
+                Log.d(TAG, "onGpsStatusChanged    GpsStatus.GPS_EVENT_STARTED");
+                msgObj = "GPS_EVENT_STARTED";
+                break;
+            case GpsStatus.GPS_EVENT_STOPPED:
+                Log.d(TAG, "onGpsStatusChanged    GpsStatus.GPS_EVENT_STOPPED");
+                msgObj = "GPS_EVENT_STOPPED";
+                break;
+            case GpsStatus.GPS_EVENT_FIRST_FIX:
+                Log.d(TAG, "onGpsStatusChanged    GpsStatus.GPS_EVENT_FIRST_FIX");
+                msgObj = "GPS_EVENT_FIRST_FIX";
+                break;
+            case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
+                Log.d(TAG,
+                        "onGpsStatusChanged    GpsStatus.GPS_EVENT_SATELLITE_STATUS");
+                break;
+        }
+        sendMessage(IMessageControl.GPS_STATUS_CHANGED, msgObj);
+    }
+
+    /**
+     * 发送消息
+     *
+     * @param msgWhat
+     * @param msgObj
+     */
+    private void sendMessage(int msgWhat, Object msgObj) {
+        iMessageControl.sendMessage(msgWhat, msgObj);
+    }
+
+}

@@ -1,0 +1,173 @@
+package com.rtm.location.sensor;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import com.rtm.location.entity.GpsEntity;
+import android.content.Context;
+import android.location.Criteria;
+import android.location.GpsSatellite;
+import android.location.GpsStatus;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.location.LocationProvider;
+import android.os.Bundle;
+import android.util.Log;
+
+public class GpsSensor {
+
+	private static final String TAG = "GpsSensor";
+	private static GpsSensor instance;
+	private LocationManager lm;
+	private boolean isSupportGps = false;
+	private boolean isGpsOpen = false;
+
+	private GpsSensor() {
+
+	}
+
+	public static GpsSensor getInstance() {
+		if (instance == null) {
+			instance = new GpsSensor();
+		}
+		return instance;
+	}
+
+	public boolean isGpsOpen() {
+		boolean ret = false;
+		if (lm != null && lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+			ret = true;
+		}
+		return ret;
+	}
+
+	public void init(Context context) {
+		GpsEntity.getInstance().setStartTime(System.currentTimeMillis());
+		lm = (LocationManager) context
+				.getSystemService(Context.LOCATION_SERVICE);
+		if (lm != null) {
+			List<String> providers = lm.getAllProviders();
+			if (providers != null) {
+				isSupportGps = providers.contains(LocationManager.GPS_PROVIDER);
+			}
+			isGpsOpen = isGpsOpen();
+		}
+	}
+
+	private Criteria getCriteria() {
+		Criteria criteria = new Criteria();
+		// 设置定位精确度 Criteria.ACCURACY_COARSE比较粗略，Criteria.ACCURACY_FINE则比较精细
+		criteria.setAccuracy(Criteria.ACCURACY_FINE);
+		// 设置是否要求速度
+		criteria.setSpeedRequired(true);
+		// 设置是否允许运营商收费
+		criteria.setCostAllowed(true);
+		// 设置是否需要方位信息
+		criteria.setBearingRequired(true);
+		// 设置是否需要海拔信息
+		criteria.setAltitudeRequired(true);
+		// 设置对电源的需求
+		criteria.setPowerRequirement(Criteria.POWER_LOW);
+		return criteria;
+	}
+
+	public void start() {
+		if (isSupportGps && isGpsOpen) {
+			// 为获取地理位置信息时设置查询条件
+			String bestProvider = lm.getBestProvider(getCriteria(), true);
+			// Location location = lm.getLastKnownLocation(bestProvider);
+			// GpsEntity.getInstance().setLocation(location);
+			lm.requestLocationUpdates(bestProvider, 1000, 1, locationListener);
+			lm.addGpsStatusListener(gpsStatusListener);
+		}
+
+	}
+
+	public void stop() {
+		if (isSupportGps && isGpsOpen) {
+			lm.removeUpdates(locationListener);
+			lm.removeGpsStatusListener(gpsStatusListener);
+		}
+	}
+
+	public void destory() {
+		if (lm != null) {
+			lm = null;
+		}
+	}
+
+	// 位置监听
+	private LocationListener locationListener = new LocationListener() {
+
+		/**
+		 * 位置信息变化时触发
+		 */
+		public void onLocationChanged(Location location) {
+			GpsEntity.getInstance().setLocation(location);
+		}
+
+		public void onStatusChanged(String provider, int status, Bundle extras) {
+			switch (status) {
+			case LocationProvider.AVAILABLE:
+				// Log.i(TAG, "当前GPS状态为可见状态");
+				break;
+			case LocationProvider.OUT_OF_SERVICE:
+				// Log.i(TAG, "当前GPS状态为服务区外状态");
+				break;
+			case LocationProvider.TEMPORARILY_UNAVAILABLE:
+				// Log.i(TAG, "当前GPS状态为暂停服务状态");
+				break;
+			}
+		}
+
+		/**
+		 * GPS开启时触发
+		 */
+		public void onProviderEnabled(String provider) {
+			// Location location = lm.getLastKnownLocation(provider);
+			// updateView(location);
+		}
+
+		/**
+		 * GPS禁用时触发
+		 */
+		public void onProviderDisabled(String provider) {
+			// updateView(null);
+		}
+
+	};
+
+	// 状态监听
+	private GpsStatus.Listener gpsStatusListener = new GpsStatus.Listener() {
+		public void onGpsStatusChanged(int event) {
+			switch (event) {
+			case GpsStatus.GPS_EVENT_FIRST_FIX:
+				// Log.i(TAG, "第一次定位");
+				break;
+			case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
+				// Log.i(TAG, "卫星状态改变");
+				GpsEntity.getInstance().setTimestampGpsStateChange(
+						System.currentTimeMillis());
+				GpsStatus gpsStatus = lm.getGpsStatus(null);
+				Iterator<GpsSatellite> iters = gpsStatus.getSatellites()
+						.iterator();
+				GpsEntity.getInstance().clearSnr();
+				ArrayList<GpsSatellite> snrs = new ArrayList<GpsSatellite>();
+				while (iters.hasNext()) {
+					GpsSatellite s = iters.next();
+					snrs.add(s);
+				}
+				GpsEntity.getInstance().setSnrs(snrs);
+				break;
+			case GpsStatus.GPS_EVENT_STARTED:
+				// Log.i(TAG, "定位启动");
+				break;
+			case GpsStatus.GPS_EVENT_STOPPED:
+				// Log.i(TAG, "定位结束");
+				break;
+			}
+		};
+	};
+
+}

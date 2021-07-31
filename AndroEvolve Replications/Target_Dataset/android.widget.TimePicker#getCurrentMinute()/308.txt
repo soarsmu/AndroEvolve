@@ -1,0 +1,72 @@
+package com.szxys.mhub.ui.mets.components;
+
+import java.util.Calendar;
+
+import com.szxys.mhub.subsystem.mets.utils.TimeUtils;
+
+import android.content.Context;
+import android.util.AttributeSet;
+import android.widget.LinearLayout;
+import android.widget.TimePicker;
+
+public class ShowTime extends LinearLayout{
+
+	private Context mContext;
+    TimePicker timePicker;
+    
+    static final int FORMAT_TIME1 = 1;   //HH时mm分;
+    static final int FORMAT_TIME2 = 2;	//HH:mm
+    private int format_flag = 2;
+    
+	public ShowTime(Context context, AttributeSet attrs) {
+		super(context, attrs);
+		mContext = context;
+	}
+	
+	public ShowTime(Context context) {
+		super(context);
+		mContext = context;
+	}
+	
+	/**
+	 * 获取日期控件的时间值
+	 * @return
+	 */
+	public String getDateText()
+	{ 
+		if(FORMAT_TIME1 == format_flag) {
+			return new StringBuilder()
+			.append(pad(timePicker.getCurrentHour())).append("时")
+			.append(pad(timePicker.getCurrentMinute())).append("分").toString();
+			
+		} else if (FORMAT_TIME2 == format_flag) {
+			return new StringBuilder()
+			.append(pad(timePicker.getCurrentHour())).append(":")
+			.append(pad(timePicker.getCurrentMinute())).toString();
+			
+		}
+		return "";
+		
+	}
+	
+	public void init(Calendar c, String timeFormat){ 
+		if(TimeUtils.format.equalsIgnoreCase(timeFormat) ||
+				TimeUtils.format2.equalsIgnoreCase(timeFormat)) {
+			format_flag = 2;
+		} else {
+			format_flag = 1;
+		}
+        timePicker = new TimePicker(mContext);
+        timePicker.setIs24HourView(true);
+        timePicker.setCurrentHour(c.get(Calendar.HOUR_OF_DAY));
+        timePicker.setCurrentMinute(c.get(Calendar.MINUTE));
+        this.addView(timePicker);
+	}
+
+    private static String pad(int c) {
+        if (c >= 10)
+            return String.valueOf(c);
+        else
+            return "0" + String.valueOf(c);
+    }
+}

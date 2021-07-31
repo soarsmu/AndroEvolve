@@ -1,0 +1,89 @@
+package com.ghrabuvka.obednicek;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.preference.DialogPreference;
+import android.preference.PreferenceManager;
+import android.util.AttributeSet;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.TimePicker;
+import android.widget.TimePicker.OnTimeChangedListener;
+
+public class DateTimePreference extends DialogPreference {
+
+	Context context;
+	TimePicker timePicker;
+	SharedPreferences settings;
+	
+	public DateTimePreference(Context context, AttributeSet attrs) {
+		super(context, attrs);
+		this.context = context;
+		setPersistent(false);
+	}
+	
+	public View onCreateDialogView()
+	{
+		settings = PreferenceManager.getDefaultSharedPreferences(context);
+		
+		LinearLayout dialogLayout = new LinearLayout(context);
+		timePicker = new TimePicker(context);
+		timePicker.setIs24HourView(true);
+		timePicker.setOnTimeChangedListener(new OnTimeChangedListener(){
+
+			@Override
+			public void onTimeChanged(TimePicker arg0, int arg1, int arg2) {
+				
+				if (arg1 > 14)
+				{
+					arg0.setCurrentHour(0); // TODO
+				}
+			}
+		});
+		
+		if (settings.getString("pref_displayTime", "unset") == "unset")
+		{
+			Editor editor = settings.edit();
+			editor.putString("pref_displayTime", "6:00");
+			editor.commit();
+			timePicker.setCurrentHour(6);
+			timePicker.setCurrentMinute(0);
+		}
+		else 
+		{
+			String savedTime = settings.getString("pref_displayTime", "6:00");
+			timePicker.setCurrentHour(Integer.valueOf(savedTime.substring(0,savedTime.indexOf(":"))));
+			timePicker.setCurrentMinute(Integer.valueOf(savedTime.substring(savedTime.indexOf(":") + 1,savedTime.length())));
+		}
+		
+		dialogLayout.addView(timePicker);
+		return dialogLayout;	
+	}
+	
+	protected void onDialogClosed(boolean result)
+	{
+		if (result)
+		{
+			String time = timePicker.getCurrentHour().toString() + ":" + timePicker.getCurrentMinute().toString();
+			Editor editor = settings.edit();
+			editor.putString("pref_displayTime", time);
+			editor.putString("pref_todayDate", "unset");
+			editor.commit();
+			context.stopService(new Intent(context, DnesniObed.class));
+			context.startService(new Intent(context, DnesniObed.class));
+	        String hour = time.substring(0,time.indexOf(":"));
+	        String minute = time.substring(time.indexOf(":") + 1, time.length());
+	        if (hour.length() == 1)
+	        {
+	        	hour = "0" + hour;
+	        }
+	        if (minute.length() == 1)
+	        {
+	        	minute = "0" + minute;
+	        }
+	        this.setSummary(hour + ":" + minute);
+		}
+	}	
+}
