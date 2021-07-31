@@ -14,7 +14,6 @@ import com.github.javaparser.ast.visitor.ModifierVisitor;
 import com.github.javaparser.ast.visitor.Visitable;
 import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
-import com.sun.javafx.tools.packager.Param;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,8 +57,8 @@ public class VariableNameDenormalization {
                     return exp;
                 }
             } catch (Exception E) {
-                System.out.println("Exception happened: ");
-                System.out.println(E);
+//                System.out.println("Exception happened: ");
+//                System.out.println(E);
                 return exp;
             }
 
@@ -169,11 +168,11 @@ public class VariableNameDenormalization {
         // Delete the parameterVariable initializer since they are no longer needed
         for (int i = 0; i < listToDelete.size(); i++) {
             Node toDelete = listToDelete.get(i);
-            try {
-                System.out.println("Is the parameter deleted: " +  toDelete.remove());
-            } catch (Exception E) {
-                System.out.println("Parameter might be already deleted before");
-            }
+//            try {
+//                System.out.println("Is the parameter deleted: " +  toDelete.remove());
+//            } catch (Exception E) {
+//                System.out.println("Parameter might be already deleted before");
+//            }
         }
         listToDelete = new ArrayList<>();
 

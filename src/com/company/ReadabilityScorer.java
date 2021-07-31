@@ -9,6 +9,7 @@ import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.visitor.ModifierVisitor;
 import com.github.javaparser.ast.visitor.Visitable;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -95,6 +96,11 @@ public class ReadabilityScorer {
                     String savePath = folderPath;
                     // Writing the files
                     try {
+                        File folder = new File(folderPath);
+                        if (!folder.exists()) {
+                            folder.mkdir();
+                        }
+                        System.out.println("Readability Scorer File: " + folderPath + fileName);
                         FileWriter fw = new FileWriter(folderPath + fileName);
                         PrintWriter pw = new PrintWriter(fw);
                         pw.println("class MainActivity {");
