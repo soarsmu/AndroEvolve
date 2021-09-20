@@ -23,7 +23,7 @@ import java.util.List;
 
 public class SymbolPreprocess {
 //    private static final String ANDROID_JAR_PATH = "/var/shared/android_jars/";
-    private static final String ANDROID_JAR_PATH = "../android_jars/";
+    private static final String ANDROID_JAR_PATH = "android_jars/";
     private static CombinedTypeSolver typeSolver;
 
 
@@ -175,6 +175,9 @@ public class SymbolPreprocess {
             e.printStackTrace();
         }
         List<String> assignmentBlock = new ArrayList<>();
+//        System.out.println("Old qualified :: " + oldQualifiedName);
+//        System.out.println("New qualified :: " + newQualifiedName);
+
         ModifierVisitor<List<String>> apiNameModifier = new ApiNameModifier(oldQualifiedName, newQualifiedName);
         apiNameModifier.visit(cu, assignmentBlock);
         file.delete();

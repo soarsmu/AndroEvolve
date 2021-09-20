@@ -11,6 +11,7 @@ import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.visitor.ModifierVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration;
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserMethodDeclaration;
@@ -58,7 +59,12 @@ public class Pipeline {
             NodeList<Expression> arg = methodCall.getArguments();
             int numArg = getNumParameter(fullyQualifiedName);
 
+//            System.out.println("This is method call: " + methodCall.getName().toString());
+//            System.out.println("This is numarg: " + numArg);
+//            System.out.println("This is what we lookin for: " + apiName);
+//            System.out.println("Outside the if: " + methodCall.toString());
             if ((methodCall.getName().toString().contains(apiName)) && (numArg == arg.size()))  {
+
                 boolean processAsStatement = true;
                 try {
                     methodCall.findAncestor(Statement.class).get();
@@ -121,24 +127,26 @@ public class Pipeline {
                                 // In case return value is not void, pull out the statement
                                 StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + statementCocci + " " + "tempEdit.txt" + " --in-place");
                                 try {
+                                    System.out.println(spatchCommand);
                                     Thread.sleep(200);
                                     Runtime.getRuntime().exec(spatchCommand.toString());
                                     Thread.sleep(200);
                                     File temp = new File(statementCocci);
-                                    temp.delete();
+//                                    temp.delete();
                                 } catch (InterruptedException | IOException e) {
-                                    e.printStackTrace();
+                                    // e.printStackTrace();
                                 }
                             }
                             StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + variableCocci + " " + "tempEdit.txt" + " --in-place");
                             allCommand.add(spatchCommand.toString());
                             try {
+                                System.out.println(spatchCommand);
                                 Runtime.getRuntime().exec(spatchCommand.toString());
                                 Thread.sleep(200);
                                 File temp = new File(variableCocci);
-                                temp.delete();
+//                                temp.delete();
                             } catch (IOException | InterruptedException e) {
-                                e.printStackTrace();
+                                // e.printStackTrace();
                             }
 
                             // END OF NORMALIZATION
@@ -213,7 +221,7 @@ public class Pipeline {
                                                 try {
                                                     newStmt = StaticJavaParser.parseStatement(toParse);
                                                 } catch (Exception E2) {
-                                                    System.out.println("Exception during parseStatement");
+//                                                    System.out.println("Exception during parseStatement");
                                                 }
                                                 newStmt = (Statement) newStmt.setParentNode(block);
                                                 block.addStatement(i, newStmt);
@@ -224,10 +232,10 @@ public class Pipeline {
                                     pastBlock = block;
                                 });
                             } catch (Exception E2) {
-                                System.out.println(E2);
+//                                System.out.println(E2);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            // e.printStackTrace();
                         }
                     });
                 } else {
@@ -290,9 +298,9 @@ public class Pipeline {
                                     Runtime.getRuntime().exec(spatchCommand.toString());
                                     Thread.sleep(200);
                                     File temp = new File(statementCocci);
-                                    temp.delete();
+//                                    temp.delete();
                                 } catch (InterruptedException | IOException e) {
-                                    e.printStackTrace();
+                                    // e.printStackTrace();
                                 }
                             }
                             StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + variableCocci + " " + "tempEdit.txt" + " --in-place");
@@ -301,9 +309,9 @@ public class Pipeline {
                                 Runtime.getRuntime().exec(spatchCommand.toString());
                                 Thread.sleep(200);
                                 File temp = new File(variableCocci);
-                                temp.delete();
+//                                temp.delete();
                             } catch (IOException | InterruptedException e) {
-                                e.printStackTrace();
+                                // e.printStackTrace();
                             }
 
                             // END OF NORMALIZATION
@@ -380,7 +388,7 @@ public class Pipeline {
                                                 try {
                                                     newStmt = StaticJavaParser.parseStatement(toParse);
                                                 } catch (Exception E) {
-                                                    System.out.println("Exception during parseStatement");
+//                                                    System.out.println("Exception during parseStatement");
                                                 }
                                                 newStmt = (Statement) newStmt.setParentNode(block);
                                                 block.addStatement(i, newStmt);
@@ -394,13 +402,17 @@ public class Pipeline {
 //
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            // e.printStackTrace();
                         }
                     });
                 }
 
 
             }
+            File toDelete = new File(statementCocci);
+//            toDelete.deleteOnExit();
+            toDelete = new File(variableCocci);
+//            toDelete.deleteOnExit();
             return methodCall;
         }
     }
@@ -447,7 +459,7 @@ public class Pipeline {
         try {
             content = Files.readAllLines(Paths.get(filepath), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
         int sizeContent = content.size();
         int i = 0;
@@ -495,7 +507,7 @@ public class Pipeline {
             }
             writer.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
         return filename;
@@ -582,7 +594,7 @@ public class Pipeline {
                         Expression newInitializer = recursiveNode(variableDeclarator.getInitializer().get());
                         variableDeclarator.setInitializer(newInitializer);
                     } catch (Exception E2) {
-                        System.out.println("Variable not initialized");
+//                        System.out.println("Variable not initialized");
                     }
 
                 });
@@ -656,7 +668,7 @@ public class Pipeline {
                                     }
                                 }
                             } catch (Exception E) {
-                                System.out.println("NO Default Constructor");
+//                                System.out.println("NO Default Constructor");
                             }
 
                         }
@@ -781,6 +793,7 @@ public class Pipeline {
                 // Recursively process the name expressions
 
                 // Check if it is a locally declared variable
+//                System.out.println("Is name expr: " + toRecurse);
                 if ((!variableName.isEmpty()) && (variableName.get(variableName.size() - 1).contains(toRecurse.asNameExpr().getName().toString()))) {
                     return toRecurse;
                 }
@@ -817,87 +830,175 @@ public class Pipeline {
                     } catch (Exception E2) {
                         // Check if field declaration
                         Expression[] returnValue = new Expression[1];
+//                        System.out.println("Return value[0] " + returnValue[0]);
                         try {
+
                             JavaParserFieldDeclaration fieldDeclaration = (JavaParserFieldDeclaration) toRecurse.asNameExpr().resolve();
+//                            System.out.println("Field declaration: " + fieldDeclaration);
+//                            System.out.println("Resolve toString: " + toRecurse.asNameExpr().resolve());
                             String varName = fieldDeclaration.getName();
                             Expression finalToRecurse = toRecurse;
-                            toRecurse.findAncestor(ClassOrInterfaceDeclaration.class).ifPresent(classDef -> {
-                                // Also get all the field declarations
-                                List<FieldDeclaration> listField = classDef.getFields();
-                                // Get all the constructor
-                                List<ConstructorDeclaration> listConstructor = classDef.getConstructors();
-                                // Loop through constructor to find applicable switch
-                                Expression initializer = null;
-                                for (int j = 0; j < listField.size(); j++) {
-                                    // Check if contain assignment
-                                    if (listField.get(j).toString().contains("=")) {
-                                        VariableDeclarator temp = listField.get(j).findFirst(VariableDeclarator.class).get();
-                                        if (temp.getName().toString().contains(varName)) {
-                                            initializer = temp.getInitializer().get();
-                                            break;
-                                        }
-                                    }
-                                }
 
-                                // Default constructor case
-                                if (initializer == null) {
-                                    try {
-                                        ConstructorDeclaration defConstructor = classDef.getDefaultConstructor().get();
-                                        List<AssignExpr> varDeclareList = defConstructor.findAll(AssignExpr.class);
-                                        for (AssignExpr varDeclare : varDeclareList) {
-                                            // if contain the variable name
-                                            if (varDeclare.getTarget().toString().contains(varName)) {
-                                                Expression value = varDeclare.getValue();
-                                                initializer = recursiveNode(value);
+                            final String variableName = toRecurse.asNameExpr().getNameAsString();
+                            final String oldApiNameFinal = apiNameOld;
+                            final String newApiNameFinal = apiNameNew;
+
+                            toRecurse.findAncestor(MethodDeclaration.class).ifPresent(methodDeclare -> {
+//                                System.out.println("Method declaration: " + methodDeclare);
+//                                System.out.println("toRecurse name: " + variableName);
+//                                System.out.println("Old api name: " + oldApiNameFinal);
+//                                System.out.println("New api name: " + newApiNameFinal);
+                                List<Statement> listStatement = methodDeclare.findAll(Statement.class);
+                                int i = listStatement.size() - 1;
+                                while ((i >= 0) && (returnValue[0] == null)) {
+                                    Statement statement = listStatement.get(i);
+                                    if (!(statement.isBlockStmt()) && !(statement.isIfStmt()) && !(statement.isForStmt()) && !(statement.isForEachStmt()) && !(statement.isWhileStmt()) && !(statement.isDoStmt())) {
+                                        if (!(statement.toString().contains(oldApiNameFinal) || (statement.toString().contains(newApiNameFinal)))) {
+                                            try {
+
+                                                Expression expr = statement.findFirst(Expression.class).get();
+//                                                System.out.println("Expression: " + expr);
+
+                                                // Assignment, check if name is variableName
+                                                if (expr.isAssignExpr()) {
+                                                    if (expr.asAssignExpr().getTarget().toString().contains(variableName)) {
+                                                        // Contain the variable name
+                                                        returnValue[0] = expr.asAssignExpr().getValue();
+//                                                        System.out.println("Assign expression: " + returnValue[0]);
+                                                    }
+                                                } else if (expr.isMethodCallExpr()) {
+                                                    // Method call need to recurse and get the method call body
+                                                    JavaParserMethodDeclaration method = (JavaParserMethodDeclaration) expr.asMethodCallExpr().resolve();
+                                                    MethodDeclaration methodDeclaration = method.getWrappedNode();
+//                                                    System.out.println("method call: " + methodDeclaration);
+                                                    List<Statement> statementInMethod = methodDeclaration.findAll(Statement.class);
+                                                    int j = statementInMethod.size() - 1;
+                                                    while ((j >= 0) && (returnValue[0] == null)) {
+                                                        Statement statementMethod = statementInMethod.get(j);
+                                                        if (!(statementMethod.isBlockStmt()) && !(statementMethod.isIfStmt()) && !(statementMethod.isForStmt()) && !(statementMethod.isForEachStmt()) && !(statementMethod.isWhileStmt()) && !(statementMethod.isDoStmt())) {
+                                                            if (!(statementMethod.toString().contains(oldApiNameFinal) || (statementMethod.toString().contains(newApiNameFinal)))) {
+                                                                try {
+                                                                    Expression exprMethod = statementMethod.findFirst(Expression.class).get();
+//                                                                    System.out.println("ExpressionMethod: " + exprMethod);
+
+                                                                    // Assignment, check if name is variableName
+                                                                    if (exprMethod.isAssignExpr()) {
+                                                                        if (exprMethod.asAssignExpr().getTarget().toString().contains(variableName)) {
+                                                                            // Contain the variable name
+                                                                            returnValue[0] = exprMethod.asAssignExpr().getValue();
+//                                                                            System.out.println("Assign expression Method: " + returnValue[0]);
+                                                                        }
+                                                                    }
+                                                                } catch (Exception e) {
+                                                                    // e.printStackTrace();
+                                                                }
+                                                            }
+                                                        }
+                                                        j--;
+                                                    }
+
+                                                }
+
+                                            } catch (Exception e) {
+                                                // e.printStackTrace();
                                             }
                                         }
-                                    } catch (Exception E1) {
+//                                        System.out.println("Statement: " + statement);
+
                                     }
+                                    i--;
                                 }
+                            });
 
-                                // Check whether initializer is still null after check in field
-                                if (initializer == null) {
-                                    for (int j = 0; j < listConstructor.size(); j++) {
-                                        ConstructorDeclaration currConstructor = listConstructor.get(j);
-                                        BlockStmt block = currConstructor.getBody();
-                                        List<AssignExpr> varDeclareList = currConstructor.findAll(AssignExpr.class);
+                            if (returnValue[0] == null) {
+                                toRecurse.findAncestor(ClassOrInterfaceDeclaration.class).ifPresent(classDef -> {
+                                    Expression initializer = null;
 
-                                        for (AssignExpr varDeclare : varDeclareList) {
-                                            // if contain the variable name
-                                            if (varDeclare.getTarget().toString().contains(varName)) {
-                                                Expression value = varDeclare.getValue();
-                                                initializer = recursiveNode(value);
+                                    // Also get all the field declarations
+                                    List<AssignExpr> list_assignment = classDef.findAll(AssignExpr.class);
+//                                for (AssignExpr assignment : list_assignment) {
+//                                    System.out.println("Assignment: ");
+//                                    System.out.println(assignment);
+//                                }
+                                    List<FieldDeclaration> listField = classDef.getFields();
+                                    // Get all the constructor
+                                    List<ConstructorDeclaration> listConstructor = classDef.getConstructors();
+                                    // Loop through constructor to find applicable switch
+
+                                    if (initializer == null) {
+                                        for (int j = 0; j < listField.size(); j++) {
+                                            // Check if contain assignment
+                                            if (listField.get(j).toString().contains("=")) {
+                                                VariableDeclarator temp = listField.get(j).findFirst(VariableDeclarator.class).get();
+                                                if (temp.getName().toString().contains(varName)) {
+                                                    initializer = temp.getInitializer().get();
+                                                    break;
+                                                }
                                             }
                                         }
-                                        if (initializer != null) {
-                                            break;
+                                    }
+
+                                    // Default constructor case
+                                    if (initializer == null) {
+                                        try {
+                                            ConstructorDeclaration defConstructor = classDef.getDefaultConstructor().get();
+                                            List<AssignExpr> varDeclareList = defConstructor.findAll(AssignExpr.class);
+                                            for (AssignExpr varDeclare : varDeclareList) {
+                                                // if contain the variable name
+                                                if (varDeclare.getTarget().toString().contains(varName)) {
+                                                    Expression value = varDeclare.getValue();
+                                                    initializer = recursiveNode(value);
+                                                }
+                                            }
+                                        } catch (Exception E1) {
                                         }
                                     }
-                                }
 
-                                // If constructor still cannot find relevant one, go search through the whole class
-                                if (initializer == null) {
-                                    List<AssignExpr> listAssign = classDef.findAll(AssignExpr.class);
-                                    for (int i = 0; i < listAssign.size(); i++) {
-                                        AssignExpr value = listAssign.get(i);
-                                        if (value.getTarget().toString().contains(varName)) {
-                                            Expression expr = value.getValue();
-                                            expr = recursiveNode(expr);
-                                            if (expr != null) {
-                                                initializer = expr;
+                                    // Check whether initializer is still null after check in field
+                                    if (initializer == null) {
+                                        for (int j = 0; j < listConstructor.size(); j++) {
+                                            ConstructorDeclaration currConstructor = listConstructor.get(j);
+                                            BlockStmt block = currConstructor.getBody();
+                                            List<AssignExpr> varDeclareList = currConstructor.findAll(AssignExpr.class);
+
+                                            for (AssignExpr varDeclare : varDeclareList) {
+                                                // if contain the variable name
+                                                if (varDeclare.getTarget().toString().contains(varName)) {
+                                                    Expression value = varDeclare.getValue();
+                                                    initializer = recursiveNode(value);
+                                                }
+                                            }
+                                            if (initializer != null) {
                                                 break;
                                             }
                                         }
-
                                     }
-                                }
 
-                                if (initializer != null) {
-                                    returnValue[0] = initializer;
-                                } else {
-                                    returnValue[0] = finalToRecurse;
-                                }
-                            });
+                                    // If constructor still cannot find relevant one, go search through the whole class
+                                    if (initializer == null) {
+                                        List<AssignExpr> listAssign = classDef.findAll(AssignExpr.class);
+                                        for (int i = 0; i < listAssign.size(); i++) {
+                                            AssignExpr value = listAssign.get(i);
+                                            if (value.getTarget().toString().contains(varName)) {
+                                                Expression expr = value.getValue();
+                                                expr = recursiveNode(expr);
+                                                if (expr != null) {
+                                                    initializer = expr;
+                                                    break;
+                                                }
+                                            }
+
+                                        }
+                                    }
+
+                                    if (initializer != null) {
+                                        returnValue[0] = initializer;
+                                    } else {
+                                        returnValue[0] = finalToRecurse;
+                                    }
+                                });
+                            }
+
                             if ((returnValue[0].toString().trim().charAt(0) == '{') && flagArgument){
                                 return toRecurse;
                             }
@@ -1107,10 +1208,10 @@ public class Pipeline {
             super.visit(ifstmt, collector);
             // Check if has else and contains Build.Version
             // also need to check if the if and else statement has the API invocation
+
             if ((ifstmt.getCondition().toString().contains("Build.VERSION") || ifstmt.getCondition().toString().contains("VERSION.SDK")) &&
                     ifstmt.hasElseBranch() && ifstmt.getThenStmt().toString().contains("classNameVariable") &&
                     ifstmt.getElseStmt().get().toString().contains("classNameVariable")) {
-
                 Statement ifBranch = ifstmt.getThenStmt();
 
                 Optional<Statement> elseBranchOptional = ifstmt.getElseStmt();
@@ -1554,9 +1655,9 @@ public class Pipeline {
             writer.println();
             writer.close();
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
         return fileName;
     }
@@ -1579,9 +1680,9 @@ public class Pipeline {
             writer.println("...");
             writer.close();
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
         return fileName;
     }
@@ -1703,9 +1804,9 @@ public class Pipeline {
             writer.println("- tempFunctionReturnValue;");
             writer.close();
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
         return fileName;
@@ -1720,7 +1821,7 @@ public class Pipeline {
         try {
             cu = StaticJavaParser.parse(file);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
         List<String> temp = new ArrayList<>();
@@ -1735,14 +1836,14 @@ public class Pipeline {
             File delete = new File(importCocci);
             delete.delete();
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
         file.delete();
         try {
             Files.write(new File(filepath).toPath(), Collections.singleton(cu.toString()), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
     }
 
@@ -1999,7 +2100,7 @@ public class Pipeline {
                 writer.write("+ }");
                 writer.println();
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                // e.printStackTrace();
             }
 
             // bottomupper version
@@ -2780,7 +2881,7 @@ public class Pipeline {
                 }
                 methodWriter.close();
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                // e.printStackTrace();
             }
             writer.close();
         } else {
@@ -2793,6 +2894,38 @@ public class Pipeline {
 
     private static String methodClassName = "";
     private static ArrayList<String> newMethodList = new ArrayList<>();
+
+//    private static class ReturnValueVisitor extends ModifierVisitor<List<String>> {
+//        private static String apiName;
+//        private static String fullyQualifiedName;
+//        private static String updateCocciPath;
+//
+//        public ReturnValueVisitor(String apiName, String fullyQualifiedName, String updateCocciPath) {
+//            this.apiName = apiName;
+//            this.fullyQualifiedName = fullyQualifiedName;
+//            this.updateCocciPath = updateCocciPath;
+//        }
+//
+//        public MethodCallExpr visit (MethodCallExpr methodCall, List<String> collector) {
+//            // Will change any remaining deprecated API invocation into tempReturnFunctionValue
+//            // if the API has return value
+//            super.visit(methodCall, collector);
+//            if ((methodCall.getName().toString().contains(apiName)) && (!methodCall.toString().contains("classNameVariable"))) {
+//                System.out.println("Method call: ");
+//                System.out.println(methodCall.toString());
+//
+//                methodCall.getParentNode().ifPresent(parent -> {
+//                    System.out.println("parent node: " + parent.toString());
+//
+//                    boolean isSuccess = parent.replace(methodCall, StaticJavaParser.parseExpression("tempFunctionReturnValue"));
+//                    System.out.println("Is replace success: " + isSuccess);
+//                    System.out.println("New parent node: " + parent.toString());
+//                });
+//
+//            }
+//            return methodCall;
+//        }
+//    }
 
     private static class UpdateFileVisitor extends ModifierVisitor<List<String>> {
         private static String apiName;
@@ -2837,7 +2970,7 @@ public class Pipeline {
                             Runtime.getRuntime().exec(spatchCommand.toString());
                             Thread.sleep(300);
                         } catch (IOException | InterruptedException e) {
-                            e.printStackTrace();
+                            // e.printStackTrace();
                         }
                         // END OF NORMALIZATION
 
@@ -2874,10 +3007,10 @@ public class Pipeline {
                                 }
                             });
                         } catch (Exception E) {
-                            System.out.println(E);
+//                            System.out.println(E);
                         }
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                     }
                 });
             }
@@ -2939,14 +3072,14 @@ public class Pipeline {
                 line = reader.readLine();
             }
         } catch (Exception E) {
-            System.out.println("FILE NOT FOUND");
+//            System.out.println("FILE NOT FOUND");
         }
 
         CompilationUnit cu = null;
         try {
             cu = StaticJavaParser.parse(file);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
         List<String> temp = new ArrayList<>();
@@ -3002,8 +3135,10 @@ public class Pipeline {
         try {
             scan = new Scanner(tempFile);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
+
+
 
 
         while (scan.hasNextLine()) {
@@ -3072,7 +3207,7 @@ public class Pipeline {
             pw_cocci.close();
             fw_cocci.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
         for (int i = 0; i < listClassString.size(); i++) {
             String currentClass = listClassString.get(i);
@@ -3083,14 +3218,49 @@ public class Pipeline {
             listClassString.set(i, currentClass);
         }
 
+
+
+
+
+
+
+//        ReturnValueVisitor returnVisitor = new ReturnValueVisitor(functionNameOld, fullyQualifiedNameOld, "tempUpdate.cocci");
+//        returnVisitor.visit(cu, temp);
         UpdateFileVisitor apiLocate = new UpdateFileVisitor(functionNameOld, fullyQualifiedNameOld, "tempUpdate.cocci");
+
+
+
 
         methodClassName = className;
 
         apiLocate.visit(cu, temp);
 
+        // Traverse CU only if has return value!
+        List<MethodCallExpr> listMethodCall = cu.findAll(MethodCallExpr.class);
+        for (MethodCallExpr methodCall: listMethodCall) {
+            if ((methodCall.getName().toString().contains(functionNameOld)) && (!methodCall.toString().contains("classNameVariable")) && (methodCall.toString().charAt(methodCall.toString().indexOf(functionNameOld)) == '.' )) {
+//                System.out.println("Method call: ");
+//                System.out.println(methodCall.toString());
+
+                methodCall.getParentNode().ifPresent(parent -> {
+//                    System.out.println("parent node: " + parent.toString());
+
+                    boolean isSuccess = parent.replace(methodCall, StaticJavaParser.parseExpression("tempFunctionReturnValue"));
+//                    System.out.println("Is replace success: " + isSuccess);
+//                    System.out.println("New parent node: " + parent.toString());
+                });
+
+            }
+        }
+
+
+//        System.out.println("\n\n\n\nPrinting CU");
+//        System.out.println(cu.toString());
+
         // Run the readability scoring here for the before normalization result
         ReadabilityScorer readabilityScorer = new ReadabilityScorer(functionNameOld, functionNameNew);
+
+
         readabilityScorer.runReadabilityScorer(cu, false, tempOutputName);
 
         VariableNameDenormalization.runVariableDenorm(cu, functionNameOld, functionNameNew);
@@ -3101,7 +3271,7 @@ public class Pipeline {
         try {
             Files.write(new File(targetFilePath).toPath(), Collections.singleton(cu.toString()), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
 
@@ -3126,6 +3296,9 @@ public class Pipeline {
     public static void main(String[] args) throws FileNotFoundException {
         SymbolPreprocess.initTypeSolver();
         // Parsing the input
+        for (int i = 1; i < args.length; i++) {
+            args[i] = args[i].replace("\\", "");
+        }
         if (args.length == 7) {
             // Update Patch Creation
             if (!args[0].equals("--generate-patch")) {
@@ -3149,20 +3322,22 @@ public class Pipeline {
                 oldApiName = oldApiName.replace(functionName, functionName + "OLD");
                 newApiName = newApiName.replace(functionName, functionName + "NEW");
             }
+
             // Normalize temporaryOutput.java
             SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), true);
             SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(newApiName), true);
+
             newNormalizeFileCocci(oldApiName, folderDirectory);
             try {
                 Thread.sleep(1200);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                // e.printStackTrace();
             }
             newNormalizeFileCocci(newApiName, folderDirectory);
             try {
                 Thread.sleep(1200);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                // e.printStackTrace();
             }
             List<Pipeline.ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
             String oldReturnValue = getReturnValue(oldApiName);
@@ -3171,6 +3346,7 @@ public class Pipeline {
             if (!oldReturnValue.equals("void") || !newReturnValue.equals("void")) {
                 haveReturn = true;
             }
+//            System.out.println("Printing listIfs: " + listIfs);
             createUpdateApiCocci(listIfs, getFunctionName(oldApiName), getFunctionName(newApiName), haveReturn, outputPath);
             System.out.println("Update Patch Created!");
             File delete = new File("temporaryOutput.java");
@@ -3187,8 +3363,13 @@ public class Pipeline {
             }
             String oldApiName = args[1].trim();
             String newApiName = args[2].trim();
+            String checkInput = args[3].trim();
+
+            boolean isProcessFolder = false;
+            if (checkInput.equals("--folder")) {
+                isProcessFolder = true;
+            }
             String targetPath = args[4].trim();
-            String folderDirectory = modifyFile(targetPath);
             String updateCocciPath = args[6].trim();
             String outputPath = args[8].trim();
 
@@ -3202,53 +3383,160 @@ public class Pipeline {
                     flagSameName = true;
                 }
             }
-            if (flagSameName) {
-                SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
-                oldApiName = oldApiName.replace(functionName, functionName + "OLD");
-                newApiName = newApiName.replace(functionName, functionName + "NEW");
-            }
+
+            if (isProcessFolder) {
+                File processedFolder = new File(targetPath);
+                File[] fileList = processedFolder.listFiles();
+                // Process each file
+                File directory = new File(outputPath);
+                if (!directory.exists()) {
+                    directory.mkdirs();
+                }
+                for (File file : fileList) {
+                    long startTime = System.currentTimeMillis();
+                    String filepath = file.getPath();
+                    targetPath = filepath;
+                    System.out.println("\n\n\nProcessing file: " + file.getPath());
+                    String final_output = outputPath + "/" + file.getName();
+
+                    // Start the process
+                    oldApiName = args[1].trim();
+                    newApiName = args[2].trim();
+                    String folderDirectory = modifyFile(targetPath);
+//                    System.out.println("Old api name before: " + oldApiName);
+//                    System.out.println("New api name before: " + newApiName);
+//                    System.out.println("Function name before: " + functionName);
+                    if (flagSameName) {
+                        SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
+                        oldApiName = args[1].trim().replace(functionName, functionName + "OLD");
+                        newApiName = args[2].trim().replace(functionName, functionName + "NEW");
+                    }
 //
 //            // Normalize temporaryOutput.java
-            SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), false);
-            newNormalizeFileCocci(oldApiName, folderDirectory);
-            try {
-                Thread.sleep(1200);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-//            String outputPath = args[3].trim();
-            String tempOutputName = outputPath.substring(outputPath.lastIndexOf("/") + 1, outputPath.lastIndexOf("."));
-            StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + updateCocciPath + " " + "temporaryOutput.java" + " --in-place");
-            runUpdate(oldApiName, newApiName, folderDirectory, updateCocciPath, tempOutputName);
-            if (flagSameName) {
-                SymbolPreprocess.revertOriginalName(folderDirectory, functionName);
-            }
-            DuplicateFix.fixDuplicate(folderDirectory);
-//
-            // Copying file to the correct output path
-            Path originalFile = Paths.get("temporaryOutput.java");
-            Path copiedFile = Paths.get(outputPath);
-            try {
-                Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            File delete = new File("temporaryOutput.java");
-            delete.delete();
-            delete = new File("tempEdit.txt");
-            delete.delete();
-            delete = new File("tempEdit1.txt");
-            delete.delete();
-            delete = new File(tempOutputName);
-            delete.delete();
-            delete = new File("updateEdit.txt");
-            delete.delete();
-            delete = new File("updateEdit1.txt");
-            delete.delete();
-            delete = new File("tempUpdate.cocci");
-            delete.delete();
+                    SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), false);
 
-            System.out.println("Update successfully applied!");
+
+
+                    newNormalizeFileCocci(oldApiName, folderDirectory);
+//
+//
+//                    System.out.println("Old api name: " + oldApiName);
+//                    System.out.println("New api name: " + newApiName);
+//                    System.out.println("Function name: " + functionName);
+//                    System.out.println("This is folder directory content: ");
+//                    BufferedReader br = new BufferedReader(new FileReader(folderDirectory));
+//                    String line;
+//                    try {
+//                        while ((line = br.readLine()) != null) {
+//                            System.out.println(line);
+//                        }
+//                    } catch (Exception E) {
+//
+//                    }
+
+
+                    try {
+                        Thread.sleep(1200);
+                    } catch (InterruptedException e) {
+                        // e.printStackTrace();
+                    }
+//            String outputPath = args[3].trim();
+                    String tempOutputName = final_output.substring(final_output.lastIndexOf("/") + 1, final_output.lastIndexOf("."));
+                    StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + updateCocciPath + " " + "temporaryOutput.java" + " --in-place");
+
+
+
+                    runUpdate(oldApiName, newApiName, folderDirectory, updateCocciPath, tempOutputName);
+
+
+
+                    if (flagSameName) {
+                        SymbolPreprocess.revertOriginalName(folderDirectory, functionName);
+                    }
+                    DuplicateFix.fixDuplicate(folderDirectory);
+//
+                    // Copying file to the correct output path
+                    Path originalFile = Paths.get("temporaryOutput.java");
+                    Path copiedFile = Paths.get(final_output);
+
+                    try {
+                        Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException e) {
+                        // e.printStackTrace();
+                    }
+                    File delete = new File("temporaryOutput.java");
+                    delete.delete();
+                    delete = new File("tempEdit.txt");
+                    delete.delete();
+                    delete = new File("tempEdit1.txt");
+                    delete.delete();
+                    delete = new File(tempOutputName);
+                    delete.delete();
+                    delete = new File("updateEdit.txt");
+                    delete.delete();
+                    delete = new File("updateEdit1.txt");
+                    delete.delete();
+                    delete = new File("tempUpdate.cocci");
+                    delete.delete();
+
+                    System.out.println("Update successfully applied!");
+                    long stopTime = System.currentTimeMillis();
+                    float elapsedTime = (stopTime - startTime);
+
+                    System.err.println(elapsedTime);
+                }
+            } else {
+                String folderDirectory = modifyFile(targetPath);
+                if (flagSameName) {
+                    SymbolPreprocess.modifyFunctionName(folderDirectory, oldApiName, newApiName);
+                    oldApiName = oldApiName.replace(functionName, functionName + "OLD");
+                    newApiName = newApiName.replace(functionName, functionName + "NEW");
+                }
+//
+//            // Normalize temporaryOutput.java
+                SeparateDeclaration.separateDeclaration(folderDirectory, getFunctionName(oldApiName), false);
+                newNormalizeFileCocci(oldApiName, folderDirectory);
+                try {
+                    Thread.sleep(1200);
+                } catch (InterruptedException e) {
+                    // e.printStackTrace();
+                }
+//            String outputPath = args[3].trim();
+                String tempOutputName = outputPath.substring(outputPath.lastIndexOf("/") + 1, outputPath.lastIndexOf("."));
+                StringBuilder spatchCommand = new StringBuilder("spatch --sp-file " + updateCocciPath + " " + "temporaryOutput.java" + " --in-place");
+                runUpdate(oldApiName, newApiName, folderDirectory, updateCocciPath, tempOutputName);
+                if (flagSameName) {
+                    SymbolPreprocess.revertOriginalName(folderDirectory, functionName);
+                }
+                DuplicateFix.fixDuplicate(folderDirectory);
+//
+                // Copying file to the correct output path
+                Path originalFile = Paths.get("temporaryOutput.java");
+                Path copiedFile = Paths.get(outputPath);
+                try {
+                    Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    // e.printStackTrace();
+                }
+                File delete = new File("temporaryOutput.java");
+                delete.delete();
+                delete = new File("tempEdit.txt");
+                delete.delete();
+                delete = new File("tempEdit1.txt");
+                delete.delete();
+                delete = new File(tempOutputName);
+                delete.delete();
+                delete = new File("updateEdit.txt");
+                delete.delete();
+                delete = new File("updateEdit1.txt");
+                delete.delete();
+                delete = new File("tempUpdate.cocci");
+                delete.delete();
+
+                System.out.println("Update successfully applied!");
+            }
+
+
         } else {
             System.out.println("USAGE:");
             System.out.println("    Patch Creation   : java -jar AndroEvolve.jar --generate-patch <deprecated_api> <updated_api> --input <example_filepath> --output <output_path>");
@@ -3294,7 +3582,7 @@ public class Pipeline {
 //            try {
 //                Thread.sleep(1200);
 //            } catch (InterruptedException e) {
-//                e.printStackTrace();
+//                // e.printStackTrace();
 //            }
 //            String updateCocciPath = args[4].trim();
 //            String outputPath = args[3].trim();
@@ -3318,7 +3606,7 @@ public class Pipeline {
 //            try {
 //                Files.copy(originalFile, copiedFile, StandardCopyOption.REPLACE_EXISTING);
 //            } catch (IOException e) {
-//                e.printStackTrace();
+//                // e.printStackTrace();
 //            }
 //        } else if (args.length == 3) {
 //
@@ -3355,13 +3643,13 @@ public class Pipeline {
 //            try {
 //                Thread.sleep(1200);
 //            } catch (InterruptedException e) {
-//                e.printStackTrace();
+//                // e.printStackTrace();
 //            }
 //            newNormalizeFileCocci(newApiName, folderDirectory);
 //            try {
 //                Thread.sleep(1200);
 //            } catch (InterruptedException e) {
-//                e.printStackTrace();
+//                // e.printStackTrace();
 //            }
 //            List<ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
 //
