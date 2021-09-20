@@ -1,0 +1,137 @@
+package us.stupidx.dailygoal;
+
+import us.stupidx.config.Config;
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.gesture.GestureOverlayView;
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.TimePicker;
+import android.widget.TimePicker.OnTimeChangedListener;
+import android.widget.Toast;
+
+public class SettingsActivity extends Activity {
+	private TimePicker aTp, mTp;
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_settings);
+
+		mTp = (TimePicker) findViewById(R.id.morning_time);
+		mTp.setIs24HourView(true);
+
+		aTp = (TimePicker) findViewById(R.id.afternoon_time);
+		aTp.setIs24HourView(true);
+		this.fillCurrentSetting();
+
+		mTp.setOnTimeChangedListener(new OnTimeChangedListener() {
+			@Override
+			public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
+				int hour = mTp.getCurrentHour();
+				if (hour == 23) {
+					mTp.setCurrentHour(0);
+				}
+
+				if (hour == 11) {
+					mTp.setCurrentHour(10);
+				}
+			}
+		});
+
+		aTp.setOnTimeChangedListener(new OnTimeChangedListener() {
+			@Override
+			public void onTimeChanged(TimePicker view, int hour, int minute) {
+				if (hour == 16) {
+					aTp.setCurrentHour(17);
+				}
+
+				if (hour == 0) {
+					aTp.setCurrentHour(23);
+				}
+
+			}
+		});
+
+		Button saveBtn = (Button) findViewById(R.id.save_setting);
+
+		findViewById(R.id.setting_rtn_btn).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				SettingsActivity.this.startActivity(new Intent(SettingsActivity.this,
+						HomeActivity.class));
+				SettingsActivity.this.overridePendingTransition(R.anim.push_right_in,
+						R.anim.push_right_out);
+			}
+		});
+
+		GestureOverlayView gov = (GestureOverlayView) findViewById(R.id.setting_gesture_ov);
+		gov.setGestureVisible(true);
+		gov.addOnGestureListener(new NavGestureListener(this, HomeActivity.class, null));
+
+	}
+
+	private void fillCurrentSetting() {
+		SharedPreferences settings = this.getSharedPreferences(Config.PREFS_NAME, 0);
+		String morningTime = settings.getString(Config.MORNING_TIME, null);
+		if (morningTime != null) {
+			String[] time = morningTime.split(":");
+			mTp.setCurrentHour(Integer.parseInt(time[0]));
+			mTp.setCurrentMinute(Integer.parseInt(time[1]));
+		} else {
+			mTp.setCurrentHour(9);
+			mTp.setCurrentMinute(0);
+		}
+
+		String afternoonTime = settings.getString(Config.AFTERNOON_TIME, null);
+		if (afternoonTime != null) {
+			String[] time = afternoonTime.split(":");
+			aTp.setCurrentHour(Integer.parseInt(time[0]));
+			aTp.setCurrentMinute(Integer.parseInt(time[0]));
+		} else {
+			aTp.setCurrentHour(18);
+			aTp.setCurrentMinute(0);
+		}
+	}
+
+	@SuppressLint("WorldWriteableFiles")
+	@SuppressWarnings("deprecation")
+	public boolean saveSettings() {
+		TimePicker morningTimePicker = (TimePicker) findViewById(R.id.morning_time);
+		TimePicker afternoonTimePicker = (TimePicker) findViewById(R.id.afternoon_time);
+
+		String morningTime = morningTimePicker.getCurrentHour() + ":"
+				+ morningTimePicker.getCurrentMinute();
+		String afternoonTime = afternoonTimePicker.getCurrentHour() + ":"
+				+ afternoonTimePicker.getCurrentMinute();
+
+		SharedPreferences settings = getSharedPreferences(Config.PREFS_NAME, MODE_WORLD_WRITEABLE);
+
+		Editor editor = settings.edit();
+		editor.putString(Config.MORNING_TIME, morningTime);
+		editor.putString(Config.AFTERNOON_TIME, afternoonTime);
+		return editor.commit();
+
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.settings, menu);
+		return true;
+	}
+
+	@Override
+	public void onBackPressed() {
+		super.onBackPressed();
+		this.finish();
+		overridePendingTransition(R.anim.push_right_in, R.anim.push_right_out);
+	}
+
+}

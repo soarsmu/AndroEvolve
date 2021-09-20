@@ -1,0 +1,185 @@
+package codemagnus.com.dealogeolib.utils;
+
+import android.content.Context;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.GpsStatus;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+
+import com.google.android.gms.maps.model.LatLng;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * Created by Harold on 11/28/2014.
+ */
+public class LocationUtils {
+
+    public static final String GPS_PROVIDER         = LocationManager.GPS_PROVIDER;
+    public static final String NETWORK_PROVIDER     = LocationManager.NETWORK_PROVIDER;
+    public static final String PASSIVE_PROVIDER     = LocationManager.PASSIVE_PROVIDER;
+    private final LocationManager locationManager;
+    private LocationListener locationListener;
+    private final long millis;
+    private final float meters;
+    private Location lastKnownLocation;
+    private GpsStatus.Listener gpsStatusListener = new GpsStatus.Listener() {
+        @Override
+        public void onGpsStatusChanged(int event) {
+            switch (event) {
+                case GpsStatus.GPS_EVENT_FIRST_FIX:
+                    locationManager.removeGpsStatusListener(this);
+                    lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    if(lastKnownLocation == null){
+                        locationManager.requestLocationUpdates(GPS_PROVIDER, millis, meters, locationListener);
+                    } else {
+                        locationListener.onLocationChanged(lastKnownLocation);
+                    }
+                    break;
+                case GpsStatus.GPS_EVENT_STARTED:
+                    getLocationUpdates(NETWORK_PROVIDER, locationListener);
+                    break;
+                case GpsStatus.GPS_EVENT_STOPPED:
+                    break;
+                case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
+                    break;
+            }
+        }
+    };
+
+    public LocationUtils(Context context, long millis, float meters){
+        this.locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        this.millis = millis;
+        this.meters = meters;
+    }
+
+    public LocationManager getLocationManager(){
+        return locationManager;
+    }
+
+    public void stopLocationUpdates(){
+        if(locationManager != null && locationListener != null)
+            locationManager.removeUpdates(locationListener);
+    }
+    public void getLocationUpdates(String provider, LocationListener locationListener) {
+        this.locationListener = locationListener;
+        if(locationManager.isProviderEnabled(provider)) {
+            lastKnownLocation = locationManager.getLastKnownLocation(provider);
+            if(lastKnownLocation == null) {
+                if(provider.equals(GPS_PROVIDER)) {
+                    locationManager.addGpsStatusListener(gpsStatusListener);
+                } else {
+                    locationManager.requestLocationUpdates(provider, millis, meters, locationListener);
+                }
+            } else {
+                locationListener.onLocationChanged(lastKnownLocation);
+            }
+        } else {
+            locationListener.onProviderDisabled(provider);
+        }
+    }
+
+    public static Address getAddress(Context context, LatLng latLng){
+        Geocoder gc = new Geocoder(context, Locale.getDefault());
+        try {
+            List<Address> addresses = gc.getFromLocation(latLng.latitude, latLng.longitude, 1);
+            if(addresses != null && addresses.size() > 0){
+                return addresses.get(0);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public static List<Address> getAddresses(Context context, LatLng latLng){
+        Geocoder gc = new Geocoder(context, Locale.getDefault());
+        try {
+            return gc.getFromLocation(latLng.latitude, latLng.longitude, 10);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static void getAddress(Context context, String address, GetAddressCallback callback){
+        Geocoder gc = new Geocoder(context, Locale.getDefault());
+        try {
+            List<Address> addresses = gc.getFromLocationName(address, 1);
+            if(addresses != null && addresses.size() > 0){
+                callback.onFinish(addresses.get(0), null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            callback.onFinish(null, e);
+        }
+    }
+    public static void getAddresses(Context context, String address,  GetAddressesCallback callback){
+        Geocoder gc = new Geocoder(context, Locale.getDefault());
+        try {
+            callback.onFinish(gc.getFromLocationName(address, 10), null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            callback.onFinish(null, e);
+        }
+    }
+    public interface GetAddressCallback{
+        void onFinish(Address address, Exception e);
+    }
+    public interface GetAddressesCallback{
+        void onFinish(List<Address> address, Exception e);
+    }
+    public static boolean isBetterLocation(Location location, Location currentBestLocation) {
+        int TWO_MINUTES = 1000 * 1 * 2;
+        if (currentBestLocation == null) {
+            // A new location is always better than no location
+            return true;
+        }
+
+        // Check whether the new location fix is newer or older
+        long timeDelta = location.getTime() - currentBestLocation.getTime();
+        boolean isSignificantlyNewer = timeDelta > TWO_MINUTES;
+        boolean isSignificantlyOlder = timeDelta < -TWO_MINUTES;
+        boolean isNewer = timeDelta > 0;
+
+        // If it's been more than two minutes since the current location, use the new location
+        // because the user has likely moved
+        if (isSignificantlyNewer) {
+            return true;
+            // If the new location is more than two minutes older, it must be worse
+        } else if (isSignificantlyOlder) {
+            return false;
+        }
+
+        // Check whether the new location fix is more or less accurate
+        int accuracyDelta = (int) (location.getAccuracy() - currentBestLocation.getAccuracy());
+        boolean isLessAccurate = accuracyDelta > 0;
+        boolean isMoreAccurate = accuracyDelta < 0;
+        boolean isSignificantlyLessAccurate = accuracyDelta > 200;
+
+        // Check if the old and new location are from the same provider
+        boolean isFromSameProvider = isSameProvider(location.getProvider(),
+                currentBestLocation.getProvider());
+
+        // Determine location quality using a combination of timeliness and accuracy
+        if (isMoreAccurate) {
+            return true;
+        } else if (isNewer && !isLessAccurate) {
+            return true;
+        } else if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Checks whether two providers are the same */
+    private static boolean isSameProvider(String provider1, String provider2) {
+        if (provider1 == null) {
+            return provider2 == null;
+        }
+        return provider1.equals(provider2);
+    }
+}

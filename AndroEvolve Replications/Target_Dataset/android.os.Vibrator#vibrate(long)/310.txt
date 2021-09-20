@@ -1,0 +1,36 @@
+package com.capstone.gamesongplayer;
+
+import android.content.Context;
+import android.os.Vibrator;
+
+/*
+ * OptionalVibrator
+ * A wrapper class for Vibrator that checks if the user has allowed vibration.
+ */
+public class OptionalVibrator {
+
+    private Context parentC; 
+    private Vibrator v;
+    
+    OptionalVibrator(Context context) {
+        super();
+        parentC = context;
+        v = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+    }
+    
+    public void vibrate(long milliseconds) {
+        GlobalVariableStates appState = ((GlobalVariableStates)parentC.getApplicationContext());
+        if(appState.getVibrationState())
+            v.vibrate(milliseconds);
+    }
+    
+    public void cancel() {
+        v.cancel();
+    }
+   
+    public void vibrate(long[] pattern, int repeat) {
+        GlobalVariableStates appState = ((GlobalVariableStates)parentC.getApplicationContext());
+        if(appState.getVibrationState())
+            v.vibrate(pattern, repeat);   
+    }
+}

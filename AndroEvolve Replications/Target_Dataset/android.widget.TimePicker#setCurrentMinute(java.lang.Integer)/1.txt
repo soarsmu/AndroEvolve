@@ -1,0 +1,125 @@
+package com.cogent.iPhonewheel.UI;
+
+import java.util.Calendar;
+
+import com.cogent.iPhonewheel.Interface.OnWheelChangedListener;
+import com.cogent.iPhonewheel.Interface.OnWheelScrollListener;
+import com.cogent.iPhonewheel.adapter.NumbericWheelAdapter;
+import com.cogent.iPhonewheel.widget.WheelView;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.view.Window;
+import android.widget.TimePicker;
+import android.widget.TimePicker.OnTimeChangedListener;
+
+public class TimeActivity extends Activity {
+	
+	private boolean timeChanged = false;
+	
+	private boolean timeScrolled = false;
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		// TODO Auto-generated method stub
+		super.onCreate(savedInstanceState);
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		setContentView(R.layout.time);
+		
+		final WheelView hours = (WheelView) findViewById(R.id.hour);
+		hours.setAdapter(new NumbericWheelAdapter(0, 23));
+		hours.setLabel("H");
+		hours.setCyclic(true);
+		
+		final WheelView minutes = (WheelView) findViewById(R.id.minute);
+		minutes.setAdapter(new NumbericWheelAdapter(0, 60));
+		minutes.setLabel("M");
+		minutes.setCyclic(true);
+		
+		final TimePicker picker = (TimePicker) findViewById(R.id.timePicker);
+		picker.setIs24HourView(true);
+		
+		Calendar c = Calendar.getInstance();
+		int currentHour = c.get(Calendar.HOUR_OF_DAY);
+		int currentMinute = c.get(Calendar.MINUTE);
+		
+		hours.setCurrentItem(currentHour);
+		minutes.setCurrentItem(currentMinute);
+		
+		picker.setCurrentHour(currentHour);
+		picker.setCurrentMinute(currentMinute);
+		
+		/*
+		addChangingListener(hours, "H");
+		addChangingListener(minutes, "M");*/
+		
+		
+		OnWheelChangedListener wheelChangedListener = new OnWheelChangedListener() {
+			
+			@Override
+			public void onChanged(WheelView wheel, int oldValue, int newValue) {
+				// TODO Auto-generated method stub
+				if(!timeScrolled){//滚轮滚动了
+					timeChanged = true;//时间数据改变了
+					//picker设置为当前滚动的数据
+					picker.setCurrentHour(hours.getCurrentItem());
+					picker.setCurrentMinute(minutes.getCurrentItem());
+					//将时间改变标志置为false
+					timeChanged = false;
+				}
+				
+			}
+		};
+		
+		//为小时和分钟添加滚轮变化监听器
+		hours.addChangingListener(wheelChangedListener);
+		minutes.addChangingListener(wheelChangedListener);
+		
+		
+		OnWheelScrollListener scrollListener = new OnWheelScrollListener() {
+			
+			@Override
+			public void onScrollingStarted(WheelView wheel) {
+				// TODO Auto-generated method stub
+				timeScrolled = true;
+			}
+			
+			@Override
+			public void onScrollingFinished(WheelView wheel) {
+				// TODO Auto-generated method stub
+				timeScrolled = false;
+				timeChanged = true;
+				picker.setCurrentHour(hours.getCurrentItem());
+				picker.setCurrentMinute(minutes.getCurrentItem());
+				timeChanged = false;
+			}
+		};
+		
+		//为小时和分钟添加滚轮滚动监听器
+		hours.addScrollingListener(scrollListener);
+		minutes.addScrollingListener(scrollListener);
+		
+		picker.setOnTimeChangedListener(new OnTimeChangedListener() {
+			
+			@Override
+			public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
+				// TODO Auto-generated method stub
+				if(!timeChanged){
+					hours.setCurrentItem(hourOfDay,true);
+					minutes.setCurrentItem(minute,true);
+				}
+			}
+		});
+	}
+	
+	//该方法用于动态更新wheel的label，本demo固定的label故注释掉了
+/*	private void addChangingListener(WheelView wheel,final String label){
+		wheel.addChangingListener(new OnWheelChangedListener() {
+			
+			@Override
+			public void onChanged(WheelView wheel, int oldValue, int newValue) {
+				// TODO Auto-generated method stub
+				wheel.setLabel(label);
+			}
+		});
+	}*/
+}
