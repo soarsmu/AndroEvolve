@@ -524,6 +524,7 @@ public class Pipeline {
         private static List<String> listAddedClassName;
         private static List<String> listAddedName;
         private static List<String> listAddedMethodName;
+        private static List<Statement> listAddedStatement;
         private static boolean flagArgument;
 
         private static List<List<String>> variableName;
@@ -540,6 +541,7 @@ public class Pipeline {
             this.listAddedName = new ArrayList<>();
             this.variableName = new ArrayList<>();
             this.listAddedMethodName = new ArrayList<>();
+            this.listAddedStatement = new ArrayList<>();
             this.flagArgument = false;
         }
 
@@ -863,7 +865,8 @@ public class Pipeline {
                                                 if (expr.isAssignExpr()) {
                                                     if (expr.asAssignExpr().getTarget().toString().contains(variableName)) {
                                                         // Contain the variable name
-                                                        returnValue[0] = expr.asAssignExpr().getValue();
+//                                                        returnValue[0] = expr.asAssignExpr().getValue();
+                                                        returnValue[0] = recursiveNode(expr.asAssignExpr().getValue());
 //                                                        System.out.println("Assign expression: " + returnValue[0]);
                                                     }
                                                 } else if (expr.isMethodCallExpr()) {
@@ -885,7 +888,8 @@ public class Pipeline {
                                                                     if (exprMethod.isAssignExpr()) {
                                                                         if (exprMethod.asAssignExpr().getTarget().toString().contains(variableName)) {
                                                                             // Contain the variable name
-                                                                            returnValue[0] = exprMethod.asAssignExpr().getValue();
+//                                                                            returnValue[0] = exprMethod.asAssignExpr().getValue();
+                                                                            returnValue[0] = recursiveNode(expr.asAssignExpr().getValue());
 //                                                                            System.out.println("Assign expression Method: " + returnValue[0]);
                                                                         }
                                                                     }
@@ -1357,6 +1361,7 @@ public class Pipeline {
                 listAddedClass = new ArrayList<>();
                 listAddedName = new ArrayList<>();
                 listAddedMethodName = new ArrayList<>();
+                listAddedStatement = new ArrayList<>();
 
 
 
@@ -1530,18 +1535,1065 @@ public class Pipeline {
         }
     }
 
+
+    private static class MethodNameCollectorVerbose extends VoidVisitorAdapter<List<String>> {
+
+        public static List<ParseResult> parsingResult;
+        private static String apiNameOld;
+        private static String apiNameNew;
+        private static List<String> listMethodName;
+        private static List<MethodDeclaration> listMethodDeclaration;
+        private static List<ClassOrInterfaceDeclaration> listAddedClass;
+        private static List<String> listAddedClassName;
+        private static List<String> listAddedName;
+        private static List<String> listAddedMethodName;
+        private static boolean flagArgument;
+        private static List<Statement> listAddedStatement;
+
+        private static List<List<String>> variableName;
+
+
+        MethodNameCollectorVerbose(String apiNameOld, String apiNameNew) {
+            this.apiNameNew = apiNameNew;
+            this.apiNameOld = apiNameOld;
+            this.parsingResult = new ArrayList<>();
+            this.listMethodName = new ArrayList<>();
+            this.listMethodDeclaration = new ArrayList<>();
+            this.listAddedClass = new ArrayList<>();
+            this.listAddedClassName = new ArrayList<>();
+            this.listAddedName = new ArrayList<>();
+            this.variableName = new ArrayList<>();
+            this.listAddedMethodName = new ArrayList<>();
+            this.flagArgument = false;
+            this.listAddedStatement = new ArrayList<>();
+        }
+
+        private boolean isMethodExist(MethodDeclaration method) {
+            String name = method.getNameAsString() + method.getParameters().toString();
+
+            if (listMethodName.contains(name)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        private boolean processStatement(Statement currStmt) {
+
+            final boolean[] returnValue = new boolean[1];
+            returnValue[0] = true;
+            if (currStmt.isReturnStmt()) {
+                try {
+                    currStmt.asReturnStmt().setExpression(recursiveNode(currStmt.asReturnStmt().getExpression().get()));
+                } catch (Exception E4) {
+                }
+            } else if (currStmt.isIfStmt()) {
+                currStmt.asIfStmt().setCondition(recursiveNode(currStmt.asIfStmt().getCondition()));
+                processStatement(currStmt.asIfStmt().getThenStmt());
+                try {
+                    processStatement(currStmt.asIfStmt().getElseStmt().get());
+                } catch (Exception E5) {
+                }
+            } else if (currStmt.isWhileStmt()) {
+                currStmt.asWhileStmt().setCondition(recursiveNode(currStmt.asWhileStmt().getCondition()));
+                processStatement(currStmt.asWhileStmt().getBody());
+            } else if (currStmt.isAssertStmt()) {
+                currStmt.asAssertStmt().setCheck(recursiveNode(currStmt.asAssertStmt().getCheck()));
+            } else if (currStmt.isForStmt()) {
+                processStatement(currStmt.asForStmt().getBody());
+            } else if (currStmt.isTryStmt()) {
+                processStatement(currStmt.asTryStmt().getTryBlock());
+            } else if (currStmt.isBlockStmt()) {
+                NodeList<Statement> listStmt = currStmt.asBlockStmt().getStatements();
+                for (int i = 0; i < listStmt.size(); i++) {
+                    boolean result = processStatement(listStmt.get(i));
+                    if (!result) {
+                        i--;
+                    }
+                }
+            } else {
+                currStmt.findFirst(VariableDeclarator.class).ifPresent(variableDeclarator -> {
+                    // Process every assignment here
+                    variableName.get(variableName.size() - 1).add(variableDeclarator.getNameAsString());
+                    // Add the variable
+                    try {
+                        Expression newInitializer = recursiveNode(variableDeclarator.getInitializer().get());
+                        variableDeclarator.setInitializer(newInitializer);
+                    } catch (Exception E2) {
+//                        System.out.println("Variable not initialized");
+                    }
+
+                });
+                currStmt.findFirst(AssignExpr.class).ifPresent(assignExpr -> {
+                    // Process every assignment here
+                    if (variableName.get(variableName.size() - 1).contains(assignExpr.getTarget().toString())) {
+                        Expression newInitializer = recursiveNode(assignExpr.getValue());
+                        assignExpr.setValue(newInitializer);
+                    } else {
+                        currStmt.remove();
+                        returnValue[0] = false;
+//                        listStatement.remove(currStmt);
+//                        i.getAndDecrement();
+                    }
+                });
+                currStmt.findFirst(MethodCallExpr.class).ifPresent(methodCallExpr -> {
+                    // Process every method call expr
+                    Expression newExpression = recursiveNode(methodCallExpr);
+                    methodCallExpr.replace(newExpression);
+                });
+            }
+            return returnValue[0];
+        }
+
+        // In the verbose mode, no need to return anything
+        private Expression recursiveNode(Expression toRecurse) {
+            System.out.println();
+            System.out.println();
+            System.out.println();
+            System.out.println("Recursive node");
+            System.out.println(toRecurse.getClass().getSimpleName());
+            System.out.println(toRecurse);
+            if (toRecurse.isThisExpr()) {
+                return toRecurse;
+            } else if (toRecurse.isFieldAccessExpr()) {
+                // Case for accessing object or class field
+                final Expression[] returnValue = {null};
+                if (toRecurse.asFieldAccessExpr().getScope().isThisExpr()) {
+                    SimpleName varName = toRecurse.asFieldAccessExpr().getName();
+                    toRecurse.findAncestor(ClassOrInterfaceDeclaration.class).ifPresent(classDef -> {
+                        // Also get all the field declarations
+                        List<FieldDeclaration> listField = classDef.getFields();
+                        // Get all the constructor
+                        List<ConstructorDeclaration> listConstructor = classDef.getConstructors();
+                        Expression initializer = null;
+                        for (int j = 0; j < listField.size(); j++) {
+                            // Check if contain assignment
+                            if (listField.get(j).toString().contains("=")) {
+                                VariableDeclarator temp = listField.get(j).findFirst(VariableDeclarator.class).get();
+                                if (temp.getName().toString().contains(varName.toString())) {
+                                    Expression value = temp.getInitializer().get();
+                                    initializer = recursiveNode(value);
+                                    break;
+                                }
+                            }
+                        }
+                        // Default constructor case
+                        if (initializer == null) {
+                            try {
+                                ConstructorDeclaration defConstructor = classDef.getDefaultConstructor().get();
+                                List<AssignExpr> varDeclareList = defConstructor.findAll(AssignExpr.class);
+                                for (AssignExpr varDeclare : varDeclareList) {
+                                    // if contain the variable name
+                                    if (varDeclare.getTarget().toString().contains(varName.toString())) {
+                                        Expression value = varDeclare.getValue();
+                                        initializer = recursiveNode(value);
+                                    }
+                                }
+                            } catch (Exception E) {
+//                                System.out.println("NO Default Constructor");
+                            }
+
+                        }
+                        // Check whether initializer is still null after check in field
+                        if (initializer == null) {
+                            for (int j = 0; j < listConstructor.size(); j++) {
+                                ConstructorDeclaration currConstructor = listConstructor.get(j);
+                                BlockStmt block = currConstructor.getBody();
+                                List<AssignExpr> varDeclareList = currConstructor.findAll(AssignExpr.class);
+
+                                for (AssignExpr varDeclare : varDeclareList) {
+                                    // if contain the variable name
+                                    if (varDeclare.getTarget().toString().contains(varName.toString())) {
+                                        Expression value = varDeclare.getValue();
+                                        initializer = recursiveNode(value);
+                                    }
+                                }
+                                if (initializer != null) {
+                                    break;
+                                }
+                            }
+                        }
+                        if (initializer != null) {
+                            returnValue[0] = initializer;
+                        } else {
+                            returnValue[0] = null;
+                        }
+                    });
+                    return returnValue[0];
+                }
+
+                try {
+                    // if no exception, meaning the object is local
+                    // Current convention:
+                    // if object is local, just assign using the default value from the
+                    // most basic constructor or the first retrieved constructor
+                    toRecurse.asFieldAccessExpr().resolve();
+                    String varName = toRecurse.asFieldAccessExpr().getName().toString();
+                    Expression scope = toRecurse.asFieldAccessExpr().getScope();
+                    Node node = ((JavaParserSymbolDeclaration) scope.asNameExpr().resolve()).getWrappedNode();
+                    node.findFirst(MethodCallExpr.class).ifPresent(methodCallExpr -> {
+                        String classname = methodCallExpr.getName().toString();
+                        methodCallExpr.findAncestor(CompilationUnit.class).ifPresent(cu -> {
+                            List<ClassOrInterfaceDeclaration> listClass = cu.findAll(ClassOrInterfaceDeclaration.class);
+                            ClassOrInterfaceDeclaration processedClass = null;
+                            for (int j = 0; j < listClass.size(); j++) {
+                                ClassOrInterfaceDeclaration currentClass = listClass.get(j);
+                                if (currentClass.getName().toString().contains(classname)) {
+                                    processedClass = currentClass;
+                                    break;
+                                }
+                            }
+                            Expression initializer = null;
+                            // If the relevant class if found, lets get the constructor
+                            if (processedClass != null) {
+                                // Loop through all available constructor to find the first
+                                // applicable initializer
+                                List<FieldDeclaration> listField = processedClass.getFields();
+                                for (int j = 0; j < listField.size(); j++) {
+                                    // Check if contain assignment
+                                    if (listField.get(j).toString().contains("=")) {
+                                        VariableDeclarator temp = listField.get(j).findFirst(VariableDeclarator.class).get();
+                                        if (temp.getName().toString().contains(varName.toString())) {
+                                            Expression value = temp.getInitializer().get();
+                                            initializer = recursiveNode(value);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                // Default constructor case
+                                if (initializer == null) {
+                                    try {
+                                        ConstructorDeclaration defConstructor = processedClass.getDefaultConstructor().get();
+                                        List<AssignExpr> varDeclareList = defConstructor.findAll(AssignExpr.class);
+                                        for (AssignExpr varDeclare : varDeclareList) {
+                                            // if contain the variable name
+                                            if (varDeclare.getTarget().toString().contains(varName.toString())) {
+                                                Expression value = varDeclare.getValue();
+                                                initializer = recursiveNode(value);
+                                            }
+                                        }
+                                    } catch (Exception E) {
+                                    }
+
+                                }
+
+                                // Check if initializer still null
+                                if (initializer == null) {
+                                    List<ConstructorDeclaration> listConstructor = processedClass.getConstructors();
+                                    for (int j = 0; j < listConstructor.size(); j++) {
+                                        ConstructorDeclaration currConstructor = listConstructor.get(j);
+                                        BlockStmt block = currConstructor.getBody();
+                                        List<AssignExpr> varDeclareList = currConstructor.findAll(AssignExpr.class);
+                                        for (AssignExpr varDeclare : varDeclareList) {
+                                            // if contain the variable name
+                                            if (varDeclare.getTarget().toString().contains(varName)) {
+                                                Expression value = varDeclare.getValue();
+                                                initializer = recursiveNode(value);
+                                            }
+                                        }
+                                        if (initializer != null) {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (initializer != null) {
+                                returnValue[0] = initializer;
+                            } else {
+                                returnValue[0] = null;
+                            }
+                        });
+                    });
+                    return returnValue[0];
+                } catch (Exception E) {
+                    // if exception, meaning the object is static and out of the file
+                    return toRecurse;
+                }
+            } else if (toRecurse.isNameExpr()) {
+                // Case other variables
+                // Recursively process the name expressions
+                // Check if it is a locally declared variable
+
+                // If nothing is found then nothing can be done
+                if ((!variableName.isEmpty()) && (variableName.get(variableName.size() - 1).contains(toRecurse.asNameExpr().getName().toString()))) {
+                    System.out.println("Automatically returned");
+                    return toRecurse;
+                }
+                try {
+                    // Recurse the resolved value
+                    JavaParserSymbolDeclaration nameDeclaration = (JavaParserSymbolDeclaration) toRecurse.asNameExpr().resolve();
+
+                    Node wrappedNode = nameDeclaration.getWrappedNode();
+                    System.out.println("Wrapped node");
+                    System.out.println(wrappedNode);
+                    // this try catch is created due to the weird bug that its not always able
+                    // to find the first expression, even though it exist
+                    try {
+                        Expression exp = wrappedNode.findFirst(Expression.class).get();
+                        System.out.println("Inside the try clause:");
+                        System.out.println(exp);
+                        if ((exp.toString().trim().charAt(0) == '{') && flagArgument) {
+                            return toRecurse;
+                        }
+                        return recursiveNode(wrappedNode.findFirst(Expression.class).get());
+                    } catch (Exception E5) {
+                        System.out.println("Inside this catch");
+
+
+                        if (wrappedNode.toString().contains("=")) {
+                            String expStr = wrappedNode.toString().substring(wrappedNode.toString().indexOf("=") + 1);
+                            if ((expStr.trim().charAt(0) == '{') && flagArgument) {
+                                return toRecurse;
+                            }
+                            System.out.println(expStr);
+                            return StaticJavaParser.parseExpression(expStr);
+                        }
+                    }
+                    System.out.println("Wrapped Node bottom");
+                    System.out.println(wrappedNode);
+                    return recursiveNode(wrappedNode.findFirst(Expression.class).get());
+                } catch (Exception E) {
+                    // If exception happened probably:
+                    // Field Declaration or Parameter Declaration
+                    // Check if parameter declaration
+                    System.out.println("Masuk yang sini ternyata;");
+                    try {
+                        // If parameter declaration, we can do nothing about it, just return null
+                        JavaParserParameterDeclaration parameterDeclaration = (JavaParserParameterDeclaration) toRecurse.asNameExpr().resolve();
+                        System.out.println("parameter declaration?");
+                        System.out.println(parameterDeclaration);
+                        return toRecurse;
+                    } catch (Exception E2) {
+                        // Check if field declaration
+                        Expression[] returnValue = new Expression[1];
+//                        System.out.println("Return value[0] " + returnValue[0]);
+                        try {
+                            JavaParserFieldDeclaration fieldDeclaration = (JavaParserFieldDeclaration) toRecurse.asNameExpr().resolve();
+                            System.out.println("Field declaration: " + fieldDeclaration);
+                            System.out.println("Resolve toString: " + toRecurse.asNameExpr().resolve());
+                            String varName = fieldDeclaration.getName();
+                            Expression finalToRecurse = toRecurse;
+
+                            // This is the variable name which declaration we are currently looking for
+                            final String variableName = toRecurse.asNameExpr().getNameAsString();
+                            final String oldApiNameFinal = apiNameOld;
+                            final String newApiNameFinal = apiNameNew;
+
+                            toRecurse.findAncestor(MethodDeclaration.class).ifPresent(methodDeclare -> {
+                                System.out.println("Method declaration: " + methodDeclare);
+                                System.out.println("toRecurse name: " + variableName);
+                                List<Statement> listStatement = methodDeclare.findAll(Statement.class);
+                                int i = listStatement.size() - 1;
+                                while ((i >= 0) && (returnValue[0] == null)) {
+                                    Statement statement = listStatement.get(i);
+                                    if (!(statement.isBlockStmt()) && !(statement.isIfStmt()) && !(statement.isForStmt()) && !(statement.isForEachStmt()) && !(statement.isWhileStmt()) && !(statement.isDoStmt())) {
+                                        if (!(statement.toString().contains(oldApiNameFinal) || (statement.toString().contains(newApiNameFinal)))) {
+                                            try {
+
+                                                Expression expr = statement.findFirst(Expression.class).get();
+//                                                System.out.println("Expression: " + expr);
+
+                                                // Assignment, check if name is variableName
+                                                if (expr.isAssignExpr()) {
+                                                    if (expr.asAssignExpr().getTarget().toString().contains(variableName)) {
+                                                        // Contain the variable name
+//                                                        returnValue[0] = expr.asAssignExpr().getValue();
+                                                        returnValue[0] = recursiveNode(expr.asAssignExpr().getValue());
+
+                                                        System.out.println("Assign expression: " + returnValue[0]);
+                                                        System.out.println("Statement: " + statement);
+                                                        listAddedStatement.add(statement);
+                                                    }
+                                                } else if (expr.isMethodCallExpr()) {
+                                                    // Method call need to recurse and get the method call body
+                                                    JavaParserMethodDeclaration method = (JavaParserMethodDeclaration) expr.asMethodCallExpr().resolve();
+                                                    MethodDeclaration methodDeclaration = method.getWrappedNode();
+//                                                    System.out.println("method call: " + methodDeclaration);
+                                                    List<Statement> statementInMethod = methodDeclaration.findAll(Statement.class);
+                                                    int j = statementInMethod.size() - 1;
+                                                    while ((j >= 0) && (returnValue[0] == null)) {
+                                                        Statement statementMethod = statementInMethod.get(j);
+                                                        if (!(statementMethod.isBlockStmt()) && !(statementMethod.isIfStmt()) && !(statementMethod.isForStmt()) && !(statementMethod.isForEachStmt()) && !(statementMethod.isWhileStmt()) && !(statementMethod.isDoStmt())) {
+                                                            if (!(statementMethod.toString().contains(oldApiNameFinal) || (statementMethod.toString().contains(newApiNameFinal)))) {
+                                                                try {
+                                                                    Expression exprMethod = statementMethod.findFirst(Expression.class).get();
+//                                                                    System.out.println("ExpressionMethod: " + exprMethod);
+
+                                                                    // Assignment, check if name is variableName
+                                                                    if (exprMethod.isAssignExpr()) {
+                                                                        if (exprMethod.asAssignExpr().getTarget().toString().contains(variableName)) {
+                                                                            // Contain the variable name
+//                                                                            returnValue[0] = exprMethod.asAssignExpr().getValue();
+                                                                            returnValue[0] = recursiveNode(expr.asAssignExpr().getValue());
+                                                                            System.out.println("Assign expression Method: " + returnValue[0]);
+                                                                            System.out.println("Statement: " + statement);
+                                                                        }
+                                                                    }
+                                                                } catch (Exception e) {
+                                                                    // e.printStackTrace();
+                                                                }
+                                                            }
+                                                        }
+                                                        j--;
+                                                    }
+
+                                                }
+
+                                            } catch (Exception e) {
+                                                // e.printStackTrace();
+                                            }
+                                        }
+                                    }
+                                    i--;
+                                }
+                            });
+
+                            if (returnValue[0] == null) {
+                                System.out.println("Still null, perhaps the name expression is not found in the method");
+                                toRecurse.findAncestor(ClassOrInterfaceDeclaration.class).ifPresent(classDef -> {
+                                    Expression initializer = null;
+
+                                    // Also get all the field declarations
+                                    List<AssignExpr> list_assignment = classDef.findAll(AssignExpr.class);
+//                                for (AssignExpr assignment : list_assignment) {
+//                                    System.out.println("Assignment: ");
+//                                    System.out.println(assignment);
+//                                }
+                                    List<FieldDeclaration> listField = classDef.getFields();
+                                    // Get all the constructor
+                                    List<ConstructorDeclaration> listConstructor = classDef.getConstructors();
+                                    // Loop through constructor to find applicable switch
+
+                                    if (initializer == null) {
+                                        for (int j = 0; j < listField.size(); j++) {
+                                            // Check if contain assignment
+                                            if (listField.get(j).toString().contains("=")) {
+                                                VariableDeclarator temp = listField.get(j).findFirst(VariableDeclarator.class).get();
+                                                if (temp.getName().toString().contains(varName)) {
+                                                    initializer = temp.getInitializer().get();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Default constructor case
+                                    if (initializer == null) {
+                                        try {
+                                            ConstructorDeclaration defConstructor = classDef.getDefaultConstructor().get();
+                                            List<AssignExpr> varDeclareList = defConstructor.findAll(AssignExpr.class);
+                                            for (AssignExpr varDeclare : varDeclareList) {
+                                                // if contain the variable name
+                                                if (varDeclare.getTarget().toString().contains(varName)) {
+                                                    Expression value = varDeclare.getValue();
+                                                    initializer = recursiveNode(value);
+                                                }
+                                            }
+                                        } catch (Exception E1) {
+                                        }
+                                    }
+
+                                    // Check whether initializer is still null after check in field
+                                    if (initializer == null) {
+                                        for (int j = 0; j < listConstructor.size(); j++) {
+                                            ConstructorDeclaration currConstructor = listConstructor.get(j);
+                                            BlockStmt block = currConstructor.getBody();
+                                            List<AssignExpr> varDeclareList = currConstructor.findAll(AssignExpr.class);
+
+                                            for (AssignExpr varDeclare : varDeclareList) {
+                                                // if contain the variable name
+                                                if (varDeclare.getTarget().toString().contains(varName)) {
+                                                    Expression value = varDeclare.getValue();
+                                                    initializer = recursiveNode(value);
+                                                }
+                                            }
+                                            if (initializer != null) {
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    // If constructor still cannot find relevant one, go search through the whole class
+                                    if (initializer == null) {
+                                        List<AssignExpr> listAssign = classDef.findAll(AssignExpr.class);
+                                        for (int i = 0; i < listAssign.size(); i++) {
+                                            AssignExpr value = listAssign.get(i);
+                                            if (value.getTarget().toString().contains(varName)) {
+                                                Expression expr = value.getValue();
+                                                expr = recursiveNode(expr);
+                                                if (expr != null) {
+                                                    initializer = expr;
+                                                    break;
+                                                }
+                                            }
+
+                                        }
+                                    }
+
+                                    if (initializer != null) {
+                                        returnValue[0] = initializer;
+                                    } else {
+                                        returnValue[0] = finalToRecurse;
+                                    }
+                                });
+                            }
+
+                            if ((returnValue[0].toString().trim().charAt(0) == '{') && flagArgument){
+                                return toRecurse;
+                            }
+                            return returnValue[0];
+                        } catch (Exception E3) {
+                            return toRecurse;
+                        }
+
+                    }
+                }
+
+            }  else if (toRecurse.isMethodCallExpr()) {
+                // Case method call expression
+                // Copy the method then process the parameters of the method to make sure its closed/primitive
+                // Then also process the content of the method
+                MethodCallExpr expression = toRecurse.asMethodCallExpr();
+                boolean hasScope = expression.getScope().isPresent();
+
+                // If has scope, resolve the scope first
+                if (hasScope) {
+                    Expression scope = expression.getScope().get();
+                    scope = recursiveNode(scope);
+                    expression.setScope(scope);
+                }
+
+
+
+
+                // Then, resolve the arguments
+                flagArgument = true;
+                NodeList<Expression> arguments = expression.getArguments();
+                for (int i = 0; i < arguments.size(); i++) {
+                    Expression newArgument = recursiveNode(arguments.get(i));
+                    // if it is a name expression, we might need to copy it
+                    if (newArgument.isNameExpr()) {
+                        flagArgument = false;
+                        JavaParserSymbolDeclaration valueDeclaration = (JavaParserSymbolDeclaration) newArgument.asNameExpr().resolve();
+
+                        ResolvedType type = newArgument.calculateResolvedType();
+                        String statement = type.describe() + " " + valueDeclaration.getWrappedNode() + ";";
+                        Statement stmt = StaticJavaParser.parseStatement(statement);
+                        // add to the code block
+
+                        BlockStmt blockStmt = expression.findAncestor(BlockStmt.class).get();
+                        boolean isExist = false;
+                        NodeList<Statement> listStmt = blockStmt.getStatements();
+
+                        for (int z = 0; z < listStmt.size(); z++ ) {
+                            if (listStmt.get(z).toString().contains(statement)) {
+                                isExist = true;
+                                break;
+                            }
+                        }
+                        if (!isExist) {
+                            blockStmt.addStatement(0, stmt);
+                        }
+
+                        flagArgument = true;
+                    }
+
+                    arguments.set(i, newArgument);
+                }
+                flagArgument = false;
+                expression.setArguments(arguments);
+
+
+
+                MethodDeclaration methodDeclare = null;
+                boolean isOutOfScope = false;
+                // Then process the method call content
+                try {
+                    JavaParserMethodDeclaration method = (JavaParserMethodDeclaration) toRecurse.asMethodCallExpr().resolve();
+                    MethodDeclaration methodDeclaration = method.getWrappedNode();
+                    // Check whether the method is already exist
+                    if (!isMethodExist(methodDeclaration)) {
+                        variableName.add(new ArrayList<String>());
+                        try {
+                            BlockStmt bodyBlock = methodDeclaration.getBody().get();
+                            NodeList<Statement> listStatement = bodyBlock.getStatements();
+                            // add parameters into the variable name first
+                            NodeList<Parameter> listParam = methodDeclaration.getParameters();
+                            for (int i = 0; i < listParam.size(); i++) {
+                                variableName.get(variableName.size() - 1).add(listParam.get(i).getName().asString());
+                            }
+                            for (AtomicInteger i = new AtomicInteger(); i.get() < listStatement.size(); i.getAndIncrement()) {
+                                Statement currStmt = listStatement.get(i.get());
+                                boolean result = processStatement(currStmt);
+                                if (result == false) {
+                                    i.getAndDecrement();
+                                }
+                            }
+                        } catch (Exception E) {
+                        }
+                        variableName.remove(variableName.size() - 1);
+                        methodDeclare = methodDeclaration;
+                    } else {
+                        return expression;
+                    }
+                } catch (Exception E) {
+                    isOutOfScope = true;
+                    return expression;
+                }
+                if (!hasScope) {
+                    listMethodName.add(methodDeclare.getNameAsString() + methodDeclare.getParameters().toString());
+                    listMethodDeclaration.add(methodDeclare);
+                } else {
+                    if (expression.getScope().get().isThisExpr()) {
+                        listMethodName.add(methodDeclare.getNameAsString() + methodDeclare.getParameters().toString());
+                        listMethodDeclaration.add(methodDeclare);
+                        expression.setScope(null);
+                    } else {
+                        // CONTINUE THIS ONE TOMMOROW
+                        // I guess resolving class and removing unimportant stuff from the class will be hard since a lot of
+                        // things need to be considered
+                        // Therefore for now, just copy the whole class
+
+                        // the bug is here, the method class is null because it has no parent
+                        ClassOrInterfaceDeclaration methodClass = null;
+                        if (methodDeclare.findAncestor(ClassOrInterfaceDeclaration.class).isPresent()) {
+                            methodClass = methodDeclare.findAncestor(ClassOrInterfaceDeclaration.class).get();
+                        } else {
+                        }
+                        if (listAddedClassName.contains(methodClass.getNameAsString())) {
+                            // Case class already copied
+                            // Simply fix the method
+                            ClassOrInterfaceDeclaration copiedClass = null;
+                            for (int i = 0; i < listAddedClass.size(); i++) {
+                                // Find the copied class
+                                if (listAddedClass.get(i).getNameAsString().equals(methodClass.getNameAsString())) {
+                                    copiedClass = listAddedClass.get(i);
+                                    // Change the method in the copied class
+                                    List<MethodDeclaration> listMethod = copiedClass.getMethods();
+                                    for (int j = 0; j < listMethod.size(); j++) {
+                                        if ((listMethod.get(j).getNameAsString().equals(methodDeclare.getNameAsString())) &&
+                                                (listMethod.get(j).getParameters().equals(methodDeclare.getParameters()))) {
+                                            copiedClass.remove(listMethod.get(j));
+                                            copiedClass.addMember(methodDeclare);
+                                            listMethod.set(j, methodDeclare);
+                                            break;
+                                        }
+                                    }
+                                    listAddedClass.set(i, copiedClass);
+                                    break;
+                                }
+                            }
+                        } else {
+                            String methodName = methodDeclare.getName().asString();
+                            List<MethodDeclaration> listMethod = methodClass.getMethodsByName(methodName);
+                            for (int i = 0; i < listMethod.size(); i++) {
+                                MethodDeclaration currMethod = listMethod.get(i);
+                                if (currMethod.getParameters().equals(methodDeclare.getParameters())) {
+                                    methodClass.remove(currMethod);
+                                    methodClass.addMember(methodDeclare);
+                                    break;
+                                }
+                            }
+
+
+                            listAddedClass.add(methodClass);
+                            listAddedClassName.add(methodClass.getNameAsString());
+                        }
+                    }
+                }
+
+                for (int i = 0; i < listAddedClass.size(); i++) {
+                    listAddedClass.get(i).setPublic(false);
+                    listAddedClass.get(i).setPrivate(false);
+                    listAddedClass.get(i).setStatic(false);
+                    listAddedClass.get(i).setInterface(false);
+                    listAddedClass.get(i).setAbstract(false);
+                    listAddedClass.get(i).setFinal(false);
+                }
+
+                return expression;
+            } else if (toRecurse.isLiteralExpr()) {
+                // Case of literal expression, simply return
+                return toRecurse;
+            } else if (toRecurse.isBinaryExpr()) {
+                try {
+                    toRecurse.asBinaryExpr().setLeft(recursiveNode(toRecurse.asBinaryExpr().getLeft()));
+                    toRecurse.asBinaryExpr().setRight(recursiveNode(toRecurse.asBinaryExpr().getRight()));
+                } catch (Exception E3) {
+
+                }
+                return toRecurse;
+            } else if (toRecurse.isObjectCreationExpr()) {
+                ObjectCreationExpr objectCreate = toRecurse.asObjectCreationExpr();
+                NodeList<Expression> expList = objectCreate.getArguments();
+                for (int i = 0; i < expList.size(); i++) {
+                    expList.set(i, recursiveNode(expList.get(i)));
+                }
+                objectCreate = objectCreate.setArguments(expList);
+                return objectCreate;
+            } else if(toRecurse.isCastExpr()) {
+                Expression exp = toRecurse.asCastExpr().getExpression();
+                toRecurse = toRecurse.asCastExpr().setExpression(recursiveNode(exp));
+                return toRecurse;
+            } else {
+                return toRecurse;
+            }
+//            return null;
+        }
+
+        private static int flag = 0;
+        @Override
+        public void visit(IfStmt ifstmt, List<String> collector) {
+            super.visit(ifstmt, collector);
+            // Check if has else and contains Build.Version
+            // also need to check if the if and else statement has the API invocation
+
+            if ((ifstmt.getCondition().toString().contains("Build.VERSION") || ifstmt.getCondition().toString().contains("VERSION.SDK")) &&
+                    ifstmt.hasElseBranch() && ifstmt.getThenStmt().toString().contains("classNameVariable") &&
+                    ifstmt.getElseStmt().get().toString().contains("classNameVariable")) {
+                Statement ifBranch = ifstmt.getThenStmt();
+
+                Optional<Statement> elseBranchOptional = ifstmt.getElseStmt();
+                if (!elseBranchOptional.isPresent()) {
+                    return;
+                }
+                Statement elseBranch = elseBranchOptional.get();
+
+
+
+                // Process to delete uninmportant and unrelated stuff first
+                // Declare important and related code
+                ArrayList<String> matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld));
+                // Delete unrelated statements
+                BlockStmt ifBlock = ifBranch.asBlockStmt();
+                NodeList<Statement> listIfBlock = ifBlock.getStatements();
+
+                String ifClassName = "";
+                for (int i = listIfBlock.size() - 1; i >= 0; i--) {
+                    boolean contain = false;
+                    for (String s : matches) {
+                        // Case does not contain the important stuff, delete
+                        if (listIfBlock.get(i).toString().contains(s)) {
+                            contain = true;
+                            break;
+                        }
+                    }
+                    if (contain) {
+                        try {
+                            VariableDeclarator temp = listIfBlock.get(i).findFirst(VariableDeclarator.class).get();
+                            if (temp.getName().asString().contains("classNameVariable")) {
+                                ifClassName = temp.getInitializer().get().toString();
+                            }
+                            matches.add(temp.getInitializer().get().toString().trim());
+                            // SHOULD CHECK IF METHOD AND HAS SCOPE
+                            if (temp.getInitializer().get().isMethodCallExpr()) {
+                                if (temp.getInitializer().get().asMethodCallExpr().getScope().isPresent()) {
+                                    matches.add(temp.getInitializer().get().asMethodCallExpr().getScope().get().toString().trim());
+                                    NodeList<Expression> arguments = temp.getInitializer().get().asMethodCallExpr().getArguments();
+                                    for (int z = 0; z < arguments.size(); z++) {
+                                        matches.add(arguments.get(z).toString());
+                                    }
+                                }
+                            }
+                        } catch (Exception E10) {
+
+                        }
+                    }
+                    if (!contain) {
+                        ifBlock.remove(listIfBlock.get(i));
+                    }
+                }
+
+
+                String elseClassName = "";
+                matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld)) ;
+                BlockStmt elseBlock = elseBranch.asBlockStmt();
+                NodeList<Statement> listElseBlock = elseBlock.getStatements();
+                for (int i = listElseBlock.size() - 1; i >= 0; i--) {
+                    boolean contain = false;
+                    for (String s : matches) {
+                        // Case does not contain the important stuff, delete
+                        if (listElseBlock.get(i).toString().contains(s)) {
+                            contain = true;
+                            break;
+                        }
+                    }
+                    if (contain) {
+
+                        try {
+                            VariableDeclarator temp = listElseBlock.get(i).findFirst(VariableDeclarator.class).get();
+                            if (temp.getName().asString().contains("classNameVariable")) {
+                                elseClassName = temp.getInitializer().get().toString();
+                            }
+                            matches.add(temp.getInitializer().get().toString().trim());
+                            // SHOULD CHECK IF METHOD AND HAS SCOPE
+                            if (temp.getInitializer().get().isMethodCallExpr()) {
+                                if (temp.getInitializer().get().asMethodCallExpr().getScope().isPresent()) {
+                                    matches.add(temp.getInitializer().get().asMethodCallExpr().getScope().get().toString().trim());
+                                    NodeList<Expression> arguments = temp.getInitializer().get().asMethodCallExpr().getArguments();
+                                    for (int z = 0; z < arguments.size(); z++) {
+                                        matches.add(arguments.get(z).toString());
+                                    }
+                                }
+                            }
+                        } catch (Exception E10) {
+
+                        }
+                    }
+                    if (!contain) {
+                        elseBlock.remove(listElseBlock.get(i));
+                    }
+                }
+
+                boolean isSameClassName = false;
+                if (ifClassName.contains(elseClassName) || elseClassName.contains(ifClassName)) {
+                    isSameClassName = true;
+                }
+
+                // DELETE FOR NON DATA FLOW VERSION
+                // Time to crawl for the related code
+                for (int i = 0; i < listElseBlock.size() - 1; i++) {
+                    Statement currStmt = listElseBlock.get(i);
+
+                    boolean finalIsSameClassName1 = isSameClassName;
+                    currStmt.findFirst(VariableDeclarator.class).ifPresent(variableDeclarator -> {
+                        if (variableDeclarator.getName().asString().contains("classNameVariable") && finalIsSameClassName1) {
+
+                        } else {
+                            Expression toRecurse = variableDeclarator.getInitializer().get();
+                            variableName = new ArrayList<>();
+                            Expression result = recursiveNode(toRecurse);
+                            // In the verbose method, no need to change the variable declarator initializer
+                            if (result == null) {
+                                variableDeclarator.setInitializer("null");
+                            } else {
+                                if (result.isMethodCallExpr()) {
+                                    if (!result.asMethodCallExpr().getScope().isPresent()) {
+                                        listAddedMethodName.add(result.asMethodCallExpr().getNameAsString());
+                                    }
+                                } else if (result.isNameExpr()) {
+                                    listAddedName.add(result.asNameExpr().getNameAsString());
+                                }
+                                variableDeclarator.setInitializer(result);
+
+                            }
+                        }
+
+                    });
+                }
+
+                List<MethodDeclaration> elseMethod = listMethodDeclaration;
+                List<ClassOrInterfaceDeclaration> elseClass = listAddedClass;
+                List<String> elseName = listAddedName;
+                List<String> elseMethodName = new ArrayList<>();
+                List<Statement> elseAddedStatement = new ArrayList<>(listAddedStatement);
+
+                for (int i = 0; i < elseMethod.size(); i++) {
+                    elseMethodName.add(elseMethod.get(i).getNameAsString());
+                }
+
+                System.out.println("elseAddedStatement;");
+                System.out.println(elseAddedStatement);
+                listMethodDeclaration = new ArrayList<>();
+                listMethodName = new ArrayList<>();
+                listAddedClassName = new ArrayList<>();
+                listAddedClass = new ArrayList<>();
+                listAddedName = new ArrayList<>();
+                listAddedMethodName = new ArrayList<>();
+                listAddedStatement = new ArrayList<>();
+
+
+
+
+                // DELETE FOR NON DATA FLOW VERSION
+                for (int i = 0; i < listIfBlock.size() - 1; i++) {
+                    Statement currStmt = listIfBlock.get(i);
+                    boolean finalIsSameClassName = isSameClassName;
+                    currStmt.findFirst(VariableDeclarator.class).ifPresent(variableDeclarator -> {
+                        if (variableDeclarator.getName().asString().contains("classNameVariable") && finalIsSameClassName) {
+                        } else {
+                            Expression toRecurse = variableDeclarator.getInitializer().get();
+                            variableName = new ArrayList<>();
+                            Expression result = recursiveNode(toRecurse);
+                            if (result == null) {
+                                variableDeclarator.setInitializer("null");
+                            } else {
+                                // To Add into the list of added name
+                                if (result.isMethodCallExpr()) {
+                                    if (!result.asMethodCallExpr().getScope().isPresent()) {
+                                        listAddedMethodName.add(result.asMethodCallExpr().getNameAsString());
+                                    }
+                                } else if (result.isNameExpr()) {
+                                    listAddedName.add(result.asNameExpr().getNameAsString());
+                                }
+                                variableDeclarator.setInitializer(result);
+                            }
+                        }
+
+                    });
+                }
+
+                List<MethodDeclaration> ifMethod = listMethodDeclaration;
+                List<ClassOrInterfaceDeclaration> ifClass = listAddedClass;
+                List<String> ifName = listAddedName;
+                List<String> ifMethodName = new ArrayList<>();
+                List<Statement> ifAddedStatement = new ArrayList<>(listAddedStatement);
+
+                System.out.println("ifAddedStatement;");
+                System.out.println(ifAddedStatement);
+
+                for (int i = 0; i < ifMethod.size(); i++) {
+                    ifMethodName.add(ifMethod.get(i).getNameAsString());
+                }
+
+                matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld)) ;
+
+                for (int i = listIfBlock.size() - 2; i >= 0; i--) {
+                    boolean contain = false;
+                    String toProcess = listIfBlock.get(i).toString();
+                    if (toProcess.contains("=")) {
+                        toProcess = toProcess.substring(0, toProcess.indexOf("="));
+                        if (toProcess.contains(" ")) {
+                            toProcess = toProcess.substring(toProcess.indexOf(" "));
+                        }
+                    }
+                    for (String s : matches) {
+                        // Case does not contain the important stuff, delete
+                        if (toProcess.contains(s)) {
+                            contain = true;
+                            break;
+                        }
+                    }
+                    if (contain) {
+                        try {
+                            VariableDeclarator temp = listIfBlock.get(i).findFirst(VariableDeclarator.class).get();
+                            if (temp.getName().asString().contains("classNameVariable")) {
+                                ifClassName = temp.getInitializer().get().toString();
+                            }
+                            matches.add(temp.getInitializer().get().toString().trim());
+                            // SHOULD CHECK IF METHOD AND HAS SCOPE
+                            if (temp.getInitializer().get().isMethodCallExpr()) {
+                                if (temp.getInitializer().get().asMethodCallExpr().getScope().isPresent()) {
+                                    matches.add(temp.getInitializer().get().asMethodCallExpr().getScope().get().toString().trim());
+                                    NodeList<Expression> arguments = temp.getInitializer().get().asMethodCallExpr().getArguments();
+                                    for (int z = 0; z < arguments.size(); z++) {
+                                        matches.add(arguments.get(z).toString());
+                                    }
+                                }
+                            }
+                        } catch (Exception E10) {
+
+                        }
+                    }
+                    if (!contain) {
+                        ifBlock.remove(listIfBlock.get(i));
+                    }
+                }
+
+
+                matches = new ArrayList<>(Arrays.asList("parameterVariable", "classNameVariable", apiNameNew, apiNameOld)) ;
+                for (int i = listElseBlock.size() - 2; i >= 0; i--) {
+                    boolean contain = false;
+                    String toProcess = listElseBlock.get(i).toString();
+                    if (toProcess.contains("=")) {
+                        toProcess = toProcess.substring(0, toProcess.indexOf("="));
+                        if (toProcess.contains(" ")) {
+                            toProcess = toProcess.substring(toProcess.indexOf(" "));
+                        }
+                    }
+
+                    for (String s : matches) {
+                        // Case does not contain the important stuff, delete
+                        if (toProcess.contains(s)) {
+                            contain = true;
+                            break;
+                        }
+                    }
+                    if (contain) {
+
+                        try {
+                            VariableDeclarator temp = listElseBlock.get(i).findFirst(VariableDeclarator.class).get();
+                            if (temp.getName().asString().contains("classNameVariable")) {
+                                elseClassName = temp.getInitializer().get().toString();
+                            }
+                            matches.add(temp.getInitializer().get().toString().trim());
+                            // SHOULD CHECK IF METHOD AND HAS SCOPE
+                            if (temp.getInitializer().get().isMethodCallExpr()) {
+                                if (temp.getInitializer().get().asMethodCallExpr().getScope().isPresent()) {
+                                    matches.add(temp.getInitializer().get().asMethodCallExpr().getScope().get().toString().trim());
+                                    NodeList<Expression> arguments = temp.getInitializer().get().asMethodCallExpr().getArguments();
+                                    for (int z = 0; z < arguments.size(); z++) {
+                                        matches.add(arguments.get(z).toString());
+                                    }
+                                }
+                            }
+                        } catch (Exception E10) {
+
+                        }
+                    }
+                    if (!contain) {
+                        elseBlock.remove(listElseBlock.get(i));
+                    }
+                }
+
+                // Check the API name here
+                if (ifBranch.toString().contains(apiNameNew)) {
+                    if (elseBranch.toString().contains(apiNameOld)) {
+                        collector.add(ifstmt.toString());
+                        ParseResult temp = new ParseResult();
+                        temp.ifCondition = ifstmt.getCondition().toString();
+                        temp.upperApiBlock = ifBranch.toString();
+                        temp.lowerApiBlock = elseBranch.toString();
+                        temp.upperMethodList = ifMethod;
+                        temp.lowerMethodList = elseMethod;
+                        temp.upperClassList = ifClass;
+                        temp.lowerClassList = elseClass;
+                        temp.upperNameList = ifName;
+                        temp.lowerNameList = elseName;
+                        temp.upperMethodName = ifMethodName;
+                        temp.lowerMethodName = elseMethodName;
+                        parsingResult.add(temp);
+                    }
+                } else if (ifBranch.toString().contains(apiNameOld)) {
+                    if (elseBranch.toString().contains(apiNameNew)) {
+                        collector.add(ifstmt.toString());
+                        ParseResult temp = new ParseResult();
+                        temp.ifCondition = ifstmt.getCondition().toString();
+                        temp.upperApiBlock = elseBranch.toString();
+                        temp.lowerApiBlock = ifBranch.toString();
+                        temp.upperMethodList = elseMethod;
+                        temp.lowerMethodList = ifMethod;
+                        temp.upperClassList = elseClass;
+                        temp.lowerClassList = ifClass;
+                        temp.upperNameList = elseName;
+                        temp.lowerNameList = ifName;
+                        temp.upperMethodName = ifMethodName;
+                        temp.lowerMethodName = elseMethodName;
+                        parsingResult.add(temp);
+                    }
+                }
+
+            }
+        }
+    }
+
     public static List<ParseResult> getMatchingIf(String apiNameOld, String apiNameNew, String filepath) throws FileNotFoundException {
-//        String tempFilePath = modifyFile(filepath);
+
         File file = new File(filepath);
         CompilationUnit cu = StaticJavaParser.parse(file);
         List<String> ifBlocks = new ArrayList<>();
+        // The original one that will merge all variables
         VoidVisitor<List<String>> methodNameCollector = new MethodNameCollector(apiNameOld, apiNameNew);
+        // The verbose one that will add variables used as new line
+//        VoidVisitor<List<String>> methodNameCollector = new MethodNameCollectorVerbose(apiNameOld, apiNameNew);
         try {
             methodNameCollector.visit(cu, ifBlocks);
         } catch (Exception E) {
             E.printStackTrace();
         }
         return MethodNameCollector.parsingResult;
+//        return MethodNameCollectorVerbose.parsingResult;
     }
 
     private static boolean validateInput(String[] args) {
@@ -3305,6 +4357,7 @@ public class Pipeline {
                 System.out.println("Run Argument Invalid");
                 System.exit(1);
             }
+            System.out.println("Update Patch Creation");
             String oldApiName = args[1].trim();
             String newApiName = args[2].trim();
             String filePath = args[4].trim();
@@ -3339,6 +4392,7 @@ public class Pipeline {
             } catch (InterruptedException e) {
                 // e.printStackTrace();
             }
+            // GetMatchingIf method will also do the data flow analysis
             List<Pipeline.ParseResult> listIfs = getMatchingIf(getFunctionName(oldApiName), getFunctionName(newApiName), folderDirectory);
             String oldReturnValue = getReturnValue(oldApiName);
             String newReturnValue = getReturnValue(newApiName);
@@ -3346,7 +4400,7 @@ public class Pipeline {
             if (!oldReturnValue.equals("void") || !newReturnValue.equals("void")) {
                 haveReturn = true;
             }
-//            System.out.println("Printing listIfs: " + listIfs);
+            System.out.println("Printing listIfs: " + listIfs);
             createUpdateApiCocci(listIfs, getFunctionName(oldApiName), getFunctionName(newApiName), haveReturn, outputPath);
             System.out.println("Update Patch Created!");
             File delete = new File("temporaryOutput.java");
